@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#17365d">
+
+  <title>Capfun Ménage Mobile</title>
+
+  <link rel="manifest" href="./manifest.json">
+
+  <script src="./config.js"></script>
+
+  <script
+    src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+    defer
+  ></script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #f3f5f8;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    #barreNotifications {
+      position: fixed;
+      z-index: 20;
+      left: 10px;
+      right: 10px;
+      top: max(10px, env(safe-area-inset-top));
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 15px;
+      background: #fff8e6;
+      box-shadow: 0 5px 18px rgba(0, 0, 0, .16);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    #barreNotifications button {
+      border: 0;
+      border-radius: 11px;
+      background: #17365d;
+      color: white;
+      padding: 11px 14px;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    #cadreApplication {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: white;
+    }
+
+    #erreurConfiguration {
+      display: none;
+      padding: 25px;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="barreNotifications">
+    <span>🔔 Activez les alertes pour être prévenu dès qu'un logement est disponible.</span>
+    <button id="boutonNotifications">
+      Activer
+    </button>
+  </div>
+
+  <div id="erreurConfiguration"></div>
+
+  <iframe
+    id="cadreApplication"
+    title="Capfun Ménage Mobile"
+    allow="clipboard-write"
+  ></iframe>
+
+  <script>
+    const CLE_PRENOM_CONTENEUR =
+      "capfun_menage_prenom_v32";
+
+    let oneSignalPret =
+      false;
+
+    let prenomActif =
+      localStorage.getItem(
+        CLE_PRENOM_CONTENEUR
+      ) || "";
+
+    function externalIdDepuisPrenom(
+      prenom
+    ) {
+      return (
+        "capfun_gc_" +
+        String(
+          prenom || ""
+        )
+          .trim()
+          .toLowerCase()
+          .normalize(
+            "NFD"
+          )
+          .replace(
+            /[\u0300-\u036f]/g,
+            ""
+          )
+          .replace(
+            /[^a-z0-9]+/g,
+            "_"
+          )
+          .replace(
+            /^_+|_+$/g,
+            ""
+          )
+      );
+    }
+
+    function chargerApplication() {
+      const config =
+        window.CAPFUN_CONFIG || {};
+
+      const url =
+        String(
+          config.APPS_SCRIPT_URL || ""
+        ).trim();
+
+      if (
+        !url ||
+        url.indexOf(
+          "COLLER_ICI"
+        ) !==
+          -1
+      ) {
+        document
+          .getElementById(
+            "cadreApplication"
+          )
+          .style.display =
+            "none";
+
+        const erreur =
+          document.getElementById(
+            "erreurConfiguration"
+          );
+
+        erreur.style.display =
+          "block";
+
+        erreur.innerHTML =
+          "<b>Configuration incomplète.</b><br><br>" +
+          "Renseignez APPS_SCRIPT_URL dans config.js.";
+
+        return;
+      }
+
+      let src =
+        url;
+
+      if (
+        prenomActif
+      ) {
+        src +=
+          (
+            url.indexOf("?") === -1
+              ? "?"
+              : "&"
+          ) +
+          "prenom=" +
+          encodeURIComponent(
+            prenomActif
+          );
+      }
+
+      document
+        .getElementById(
+          "cadreApplication"
+        )
+        .src =
+          src;
+    }
+
+    function initialiserOneSignal() {
+      const config =
+        window.CAPFUN_CONFIG || {};
+
+      const appId =
+        String(
+          config.ONESIGNAL_APP_ID || ""
+        ).trim();
+
+      if (
+        !appId ||
+        appId.indexOf(
+          "COLLER_ICI"
+        ) !==
+          -1
+      ) {
+        return;
+      }
+
+      window.OneSignalDeferred =
+        window.OneSignalDeferred || [];
+
+      OneSignalDeferred.push(
+        async function(
+          OneSignal
+        ) {
+          await OneSignal.init({
+            appId:
+              appId,
+
+            serviceWorkerPath:
+              "OneSignalSDKWorker.js",
+
+            serviceWorkerParam: {
+              scope:
+                "/"
+            },
+
+            autoResubscribe:
+              true,
+
+            welcomeNotification: {
+              disable:
+                true
+            }
+          });
+
+          oneSignalPret =
+            true;
+
+          if (
+            prenomActif
+          ) {
+            await OneSignal.login(
+              externalIdDepuisPrenom(
+                prenomActif
+              )
+            );
+          }
+
+          mettreAJourBarreNotifications(
+            OneSignal
+          );
+
+          OneSignal.Notifications.addEventListener(
+            "permissionChange",
+            function() {
+              mettreAJourBarreNotifications(
+                OneSignal
+              );
+            }
+          );
+        }
+      );
+    }
+
+    function mettreAJourBarreNotifications(
+      OneSignal
+    ) {
+      const barre =
+        document.getElementById(
+          "barreNotifications"
+        );
+
+      if (
+        !prenomActif
+      ) {
+        barre.style.display =
+          "none";
+
+        return;
+      }
+
+      barre.style.display =
+        OneSignal.Notifications.permission
+          ? "none"
+          : "flex";
+    }
+
+    document
+      .getElementById(
+        "boutonNotifications"
+      )
+      .addEventListener(
+        "click",
+        function() {
+          window.OneSignalDeferred =
+            window.OneSignalDeferred || [];
+
+          OneSignalDeferred.push(
+            async function(
+              OneSignal
+            ) {
+              if (
+                prenomActif
+              ) {
+                await OneSignal.login(
+                  externalIdDepuisPrenom(
+                    prenomActif
+                  )
+                );
+              }
+
+              await OneSignal
+                .Notifications
+                .requestPermission();
+
+              if (
+                OneSignal.Notifications.permission
+              ) {
+                await OneSignal
+                  .User
+                  .PushSubscription
+                  .optIn();
+              }
+
+              mettreAJourBarreNotifications(
+                OneSignal
+              );
+            }
+          );
+        }
+      );
+
+    window.addEventListener(
+      "message",
+      function(event) {
+        const donnees =
+          event.data || {};
+
+        if (
+          donnees.type !==
+            "capfun-prenom" ||
+          !donnees.prenom
+        ) {
+          return;
+        }
+
+        prenomActif =
+          String(
+            donnees.prenom
+          ).trim();
+
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
+          prenomActif
+        );
+
+        window.OneSignalDeferred =
+          window.OneSignalDeferred || [];
+
+        OneSignalDeferred.push(
+          async function(
+            OneSignal
+          ) {
+            await OneSignal.login(
+              externalIdDepuisPrenom(
+                prenomActif
+              )
+            );
+
+            mettreAJourBarreNotifications(
+              OneSignal
+            );
+          }
+        );
+      }
+    );
+
+    chargerApplication();
+    initialiserOneSignal();
+  </script>
+</body>
+</html>
