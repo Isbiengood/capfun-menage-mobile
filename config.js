@@ -17,5 +17,5 @@ window.CAPFUN_CONFIG = {
    * App ID public OneSignal.
    */
   ONESIGNAL_APP_ID:
-    "COLLER_ICI_ONESIGNAL_APP_ID"
+    "54be8a5d-df55-452a-a5c9-d3559ecd9297"
 };
