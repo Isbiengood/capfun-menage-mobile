@@ -11,7 +11,7 @@ window.CAPFUN_CONFIG = {
    * URL /exec de l'application Web Apps Script actuelle.
    */
   APPS_SCRIPT_URL:
-    "COLLER_ICI_URL_APPS_SCRIPT_EXEC",
+    "https://script.google.com/macros/s/AKfycbwnRLlP30z3n0it-fA_vF5cHa5sJji399v_bYqtYkrel4-cRiKuHvV1DVjDkfa39_uP/exec",
 
   /*
    * App ID public OneSignal.
