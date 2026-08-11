@@ -879,6 +879,115 @@
 
       if (
         donnees.type ===
+          "campmanager-notification-status-request"
+      ) {
+        window.OneSignalDeferred =
+          window.OneSignalDeferred || [];
+
+        OneSignalDeferred.push(
+          async function(OneSignal) {
+            const permission =
+              !!OneSignal.Notifications.permission;
+
+            let active = false;
+
+            try {
+              active =
+                permission &&
+                !!OneSignal.User.PushSubscription.optedIn;
+            } catch (erreur) {
+              active = permission;
+            }
+
+            evenement.source.postMessage(
+              {
+                type: "campmanager-notification-status",
+                active: active,
+                permission: permission
+              },
+              "*"
+            );
+          }
+        );
+
+        return;
+      }
+
+      if (
+        donnees.type ===
+          "campmanager-notifications-set"
+      ) {
+        window.OneSignalDeferred =
+          window.OneSignalDeferred || [];
+
+        OneSignalDeferred.push(
+          async function(OneSignal) {
+            if (donnees.prenom) {
+              await OneSignal.login(
+                externalIdDepuisPrenom(donnees.prenom)
+              );
+            }
+
+            if (donnees.active) {
+              if (!OneSignal.Notifications.permission) {
+                await OneSignal.Notifications.requestPermission();
+              }
+
+              if (OneSignal.Notifications.permission) {
+                await OneSignal.User.PushSubscription.optIn();
+              }
+            } else {
+              await OneSignal.User.PushSubscription.optOut();
+            }
+
+            const permission =
+              !!OneSignal.Notifications.permission;
+
+            let active = false;
+
+            try {
+              active =
+                permission &&
+                !!OneSignal.User.PushSubscription.optedIn;
+            } catch (erreur) {
+              active = permission;
+            }
+
+            evenement.source.postMessage(
+              {
+                type: "campmanager-notification-status",
+                active: active,
+                permission: permission
+              },
+              "*"
+            );
+          }
+        );
+
+        return;
+      }
+
+      if (
+        donnees.type ===
+          "campmanager-notifications-reset"
+      ) {
+        window.OneSignalDeferred =
+          window.OneSignalDeferred || [];
+
+        OneSignalDeferred.push(
+          async function(OneSignal) {
+            try {
+              await OneSignal.User.PushSubscription.optOut();
+              await OneSignal.logout();
+            } catch (erreur) {}
+          }
+        );
+
+        return;
+      }
+
+      if (
+        donnees.type ===
           "capfun-prenom" &&
         donnees.prenom
       ) {
