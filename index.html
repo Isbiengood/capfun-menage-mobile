@@ -7,62 +7,215 @@
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
   <meta name="theme-color" content="#17365d">
-
-  <title>Capfun Ménage Mobile</title>
-
+  <title>CampManager Mobile</title>
   <link rel="manifest" href="./manifest.json">
 
   <script src="./config.js"></script>
-
   <script
     src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
     defer
   ></script>
 
   <style>
+    :root {
+      color-scheme: light dark;
+      --fond: #f3f5f8;
+      --carte: #ffffff;
+      --texte: #17202a;
+      --secondaire: #5f6b76;
+      --bleu: #17365d;
+      --bordure: #dfe4ea;
+      --vert: #257b36;
+      --rouge: #b3261e;
+    }
+
+    * { box-sizing: border-box; }
+
     html,
     body {
       margin: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #f3f5f8;
+      background: var(--fond);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--texte);
     }
 
-    #barreNotifications {
-      position: fixed;
-      z-index: 20;
-      left: 10px;
-      right: 10px;
-      top: max(10px, env(safe-area-inset-top));
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 15px;
-      background: #fff8e6;
-      box-shadow: 0 5px 18px rgba(0, 0, 0, .16);
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    #barreNotifications button {
-      border: 0;
-      border-radius: 11px;
-      background: #17365d;
-      color: white;
-      padding: 11px 14px;
-      font-size: 16px;
-      font-weight: 800;
+    body.sombre {
+      --fond: #121212;
+      --carte: #1f1f1f;
+      --texte: #ffffff;
+      --secondaire: #c6c6c6;
+      --bordure: #3a3a3a;
     }
 
     #cadreApplication {
       width: 100%;
       height: 100%;
       border: 0;
+      background: var(--carte);
+    }
+
+    .voile {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(10, 18, 28, .58);
+      backdrop-filter: blur(4px);
+    }
+
+    .voile.cache { display: none; }
+
+    .modal {
+      width: min(560px, 100%);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 24px;
+      border: 1px solid var(--bordure);
+      border-radius: 22px;
+      background: var(--carte);
+      color: var(--texte);
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+    }
+
+    .modal h1,
+    .modal h2 {
+      margin: 0 0 12px;
+      color: var(--bleu);
+    }
+
+    body.sombre .modal h1,
+    body.sombre .modal h2 {
+      color: #d6e6ff;
+    }
+
+    .intro {
+      margin: 0 0 20px;
+      color: var(--secondaire);
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .option {
+      margin: 12px 0;
+      padding: 15px;
+      border: 1px solid var(--bordure);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--carte) 92%, var(--fond));
+    }
+
+    .ligne {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .titre-option {
+      font-size: 18px;
+      font-weight: 850;
+    }
+
+    .aide {
+      margin-top: 6px;
+      color: var(--secondaire);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .interrupteur {
+      appearance: none;
+      width: 54px;
+      height: 31px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: #9aa4af;
+      position: relative;
+      transition: .18s;
+    }
+
+    .interrupteur::after {
+      content: "";
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      top: 3px;
+      left: 3px;
+      border-radius: 50%;
       background: white;
+      transition: .18s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.28);
+    }
+
+    .interrupteur:checked {
+      background: var(--vert);
+    }
+
+    .interrupteur:checked::after {
+      transform: translateX(23px);
+    }
+
+    .interrupteur:disabled {
+      opacity: .45;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .bouton-principal,
+    .bouton-secondaire,
+    .bouton-danger {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 12px;
+      border-radius: 14px;
+      font-weight: 850;
+      padding: 10px 14px;
+    }
+
+    .bouton-principal {
+      border: 0;
+      background: var(--bleu);
+      color: white;
+    }
+
+    .bouton-secondaire {
+      border: 1px solid var(--bordure);
+      background: var(--carte);
+      color: var(--texte);
+    }
+
+    .bouton-danger {
+      border: 1px solid #e3b6b2;
+      background: #fff1f0;
+      color: var(--rouge);
+    }
+
+    body.sombre .bouton-danger {
+      background: #321918;
+      border-color: #70403c;
+      color: #ffb4ad;
+    }
+
+    .etat {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .separateur {
+      height: 1px;
+      margin: 18px 0;
+      background: var(--bordure);
     }
 
     #erreurConfiguration {
@@ -75,24 +228,226 @@
 </head>
 
 <body>
-  <div id="barreNotifications">
-    <span>🔔 Activez les alertes pour être prévenu dès qu'un logement est disponible.</span>
-    <button id="boutonNotifications">
-      Activer
-    </button>
-  </div>
-
   <div id="erreurConfiguration"></div>
 
   <iframe
     id="cadreApplication"
-    title="Capfun Ménage Mobile"
+    title="CampManager Mobile"
     allow="clipboard-write"
   ></iframe>
 
+  <!-- Premier lancement -->
+  <div
+    id="assistantPremierLancement"
+    class="voile cache"
+  >
+    <div class="modal">
+      <h1>🏕️ Bienvenue sur CampManager Mobile</h1>
+
+      <p class="intro">
+        Choisissez les alertes que vous souhaitez utiliser sur ce téléphone.
+        Ces réglages pourront être modifiés plus tard avec la roue ⚙️.
+      </p>
+
+      <div class="option">
+        <div class="ligne">
+          <div>
+            <div class="titre-option">🔔 Notifications</div>
+            <div class="aide">
+              Être averti lorsqu’un logement attribué devient disponible
+              ou lorsqu’un contrôle est prêt.
+            </div>
+          </div>
+          <input
+            id="premierNotifications"
+            class="interrupteur"
+            type="checkbox"
+            aria-label="Notifications"
+          >
+        </div>
+      </div>
+
+      <div class="option">
+        <div class="ligne">
+          <div>
+            <div class="titre-option">📳 Vibrations</div>
+            <div
+              id="aideVibrationPremier"
+              class="aide"
+            >
+              Faire vibrer le téléphone lorsqu’une nouvelle tâche apparaît
+              pendant que l’application est ouverte.
+            </div>
+          </div>
+          <input
+            id="premierVibrations"
+            class="interrupteur"
+            type="checkbox"
+            aria-label="Vibrations"
+          >
+        </div>
+      </div>
+
+      <button
+        id="terminerPremierLancement"
+        class="bouton-principal"
+        type="button"
+      >
+        Continuer
+      </button>
+    </div>
+  </div>
+
+  <!-- Réglages -->
+  <div
+    id="fenetreReglages"
+    class="voile cache"
+  >
+    <div class="modal">
+      <h2>⚙️ Réglages</h2>
+
+      <div class="option">
+        <div class="titre-option">👤 Utilisateur</div>
+        <div
+          id="prenomReglages"
+          class="aide"
+        >
+          —
+        </div>
+        <button
+          id="changerPrenom"
+          class="bouton-secondaire"
+          type="button"
+        >
+          Changer de prénom
+        </button>
+      </div>
+
+      <div class="option">
+        <div class="ligne">
+          <div>
+            <div class="titre-option">🔔 Notifications</div>
+            <div
+              id="etatNotifications"
+              class="aide"
+            >
+              Vérification…
+            </div>
+          </div>
+          <input
+            id="reglageNotifications"
+            class="interrupteur"
+            type="checkbox"
+          >
+        </div>
+      </div>
+
+      <div class="option">
+        <div class="ligne">
+          <div>
+            <div class="titre-option">📳 Vibrations</div>
+            <div
+              id="aideVibration"
+              class="aide"
+            >
+              Nouvelle tâche lorsque l’application est ouverte.
+            </div>
+          </div>
+          <input
+            id="reglageVibrations"
+            class="interrupteur"
+            type="checkbox"
+          >
+        </div>
+      </div>
+
+      <div
+        id="optionSon"
+        class="option"
+      >
+        <div class="ligne">
+          <div>
+            <div class="titre-option">🔊 Son</div>
+            <div class="aide">
+              Petit signal sonore pour une nouvelle tâche (Android).
+            </div>
+          </div>
+          <input
+            id="reglageSon"
+            class="interrupteur"
+            type="checkbox"
+          >
+        </div>
+      </div>
+
+      <div class="option">
+        <div class="ligne">
+          <div>
+            <div class="titre-option">🌙 Mode sombre</div>
+            <div class="aide">
+              Affichage sombre sur ce téléphone.
+            </div>
+          </div>
+          <input
+            id="reglageModeSombre"
+            class="interrupteur"
+            type="checkbox"
+          >
+        </div>
+      </div>
+
+      <div class="separateur"></div>
+
+      <button
+        id="reinitialiserAutorisations"
+        class="bouton-danger"
+        type="button"
+      >
+        🔄 Réinitialiser les autorisations
+      </button>
+
+      <div class="option">
+        <div class="titre-option">ℹ️ À propos</div>
+        <div class="aide">
+          <b>CampManager Mobile</b><br>
+          Version 3.2.1 — Build 2026.08.11<br>
+          Serveur : Capfun Grand Cerf
+        </div>
+
+        <div
+          id="etatConnexion"
+          class="etat"
+        ></div>
+      </div>
+
+      <button
+        id="fermerReglages"
+        class="bouton-principal"
+        type="button"
+      >
+        Fermer
+      </button>
+    </div>
+  </div>
+
   <script>
+    const VERSION =
+      "3.2.1";
+
     const CLE_PRENOM_CONTENEUR =
-      "capfun_menage_prenom_v32";
+      "campManagerPrenom";
+
+    const CLE_ASSISTANT_TERMINE =
+      "campManagerAssistantTermine";
+
+    const CLE_VIBRATIONS =
+      "campManagerVibrations";
+
+    const CLE_SON =
+      "campManagerSon";
+
+    const CLE_SOMBRE =
+      "campManagerModeSombre";
 
     let oneSignalPret =
       false;
@@ -101,6 +456,159 @@
       localStorage.getItem(
         CLE_PRENOM_CONTENEUR
       ) || "";
+
+    function boolLocalStorage(
+      cle,
+      valeurParDefaut
+    ) {
+      const valeur =
+        localStorage.getItem(
+          cle
+        );
+
+      if (
+        valeur === null
+      ) {
+        return valeurParDefaut;
+      }
+
+      return valeur ===
+        "1";
+    }
+
+    const preferences = {
+      vibrations:
+        boolLocalStorage(
+          CLE_VIBRATIONS,
+          true
+        ),
+
+      son:
+        boolLocalStorage(
+          CLE_SON,
+          false
+        ),
+
+      modeSombre:
+        boolLocalStorage(
+          CLE_SOMBRE,
+          false
+        )
+    };
+
+    const elements = {};
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      function() {
+        elements.iframe =
+          document.getElementById(
+            "cadreApplication"
+          );
+
+        elements.assistant =
+          document.getElementById(
+            "assistantPremierLancement"
+          );
+
+        elements.premierNotifications =
+          document.getElementById(
+            "premierNotifications"
+          );
+
+        elements.premierVibrations =
+          document.getElementById(
+            "premierVibrations"
+          );
+
+        elements.aideVibrationPremier =
+          document.getElementById(
+            "aideVibrationPremier"
+          );
+
+        elements.reglages =
+          document.getElementById(
+            "fenetreReglages"
+          );
+
+        elements.prenomReglages =
+          document.getElementById(
+            "prenomReglages"
+          );
+
+        elements.reglageNotifications =
+          document.getElementById(
+            "reglageNotifications"
+          );
+
+        elements.etatNotifications =
+          document.getElementById(
+            "etatNotifications"
+          );
+
+        elements.reglageVibrations =
+          document.getElementById(
+            "reglageVibrations"
+          );
+
+        elements.aideVibration =
+          document.getElementById(
+            "aideVibration"
+          );
+
+        elements.reglageSon =
+          document.getElementById(
+            "reglageSon"
+          );
+
+        elements.optionSon =
+          document.getElementById(
+            "optionSon"
+          );
+
+        elements.reglageModeSombre =
+          document.getElementById(
+            "reglageModeSombre"
+          );
+
+        elements.etatConnexion =
+          document.getElementById(
+            "etatConnexion"
+          );
+
+        appliquerModeSombre();
+        configurerOptionsAppareil();
+        brancherEvenements();
+        chargerApplication();
+        initialiserOneSignal();
+
+        window.addEventListener(
+          "online",
+          actualiserEtatConnexion
+        );
+
+        window.addEventListener(
+          "offline",
+          actualiserEtatConnexion
+        );
+
+        actualiserEtatConnexion();
+      }
+    );
+
+
+    function estAndroid() {
+      return /Android/i.test(
+        navigator.userAgent || ""
+      );
+    }
+
+
+    function vibrationDisponible() {
+      return typeof navigator.vibrate ===
+        "function";
+    }
+
 
     function externalIdDepuisPrenom(
       prenom
@@ -130,6 +638,7 @@
       );
     }
 
+
     function chargerApplication() {
       const config =
         window.CAPFUN_CONFIG || {};
@@ -146,12 +655,8 @@
         ) !==
           -1
       ) {
-        document
-          .getElementById(
-            "cadreApplication"
-          )
-          .style.display =
-            "none";
+        elements.iframe.style.display =
+          "none";
 
         const erreur =
           document.getElementById(
@@ -176,7 +681,8 @@
       ) {
         src +=
           (
-            url.indexOf("?") === -1
+            url.indexOf("?") ===
+              -1
               ? "?"
               : "&"
           ) +
@@ -186,13 +692,15 @@
           );
       }
 
-      document
-        .getElementById(
-          "cadreApplication"
-        )
-        .src =
-          src;
+      elements.iframe.src =
+        src;
+
+      elements.iframe.addEventListener(
+        "load",
+        envoyerPreferencesVersApplication
+      );
     }
+
 
     function initialiserOneSignal() {
       const config =
@@ -229,7 +737,7 @@
 
             serviceWorkerParam: {
               scope:
-                "/"
+                "/capfun-menage-mobile/"
             },
 
             autoResubscribe:
@@ -254,104 +762,126 @@
             );
           }
 
-          mettreAJourBarreNotifications(
+          await actualiserEtatNotifications(
             OneSignal
           );
-
-          OneSignal.Notifications.addEventListener(
-            "permissionChange",
-            function() {
-              mettreAJourBarreNotifications(
-                OneSignal
-              );
-            }
-          );
         }
       );
     }
 
-    function mettreAJourBarreNotifications(
-      OneSignal
-    ) {
-      const barre =
-        document.getElementById(
-          "barreNotifications"
+
+    function brancherEvenements() {
+      window.addEventListener(
+        "message",
+        gererMessageApplication
+      );
+
+      document
+        .getElementById(
+          "terminerPremierLancement"
+        )
+        .addEventListener(
+          "click",
+          terminerAssistant
         );
 
-      if (
-        !prenomActif
-      ) {
-        barre.style.display =
-          "none";
+      elements.premierNotifications
+        .addEventListener(
+          "change",
+          gererActivationNotificationsPremierLancement
+        );
 
-        return;
-      }
+      elements.premierVibrations
+        .addEventListener(
+          "change",
+          function() {
+            preferences.vibrations =
+              this.checked;
 
-      barre.style.display =
-        OneSignal.Notifications.permission
-          ? "none"
-          : "flex";
+            sauvegarderPreferences();
+          }
+        );
+
+      elements.reglageNotifications
+        .addEventListener(
+          "change",
+          gererActivationNotificationsReglages
+        );
+
+      elements.reglageVibrations
+        .addEventListener(
+          "change",
+          function() {
+            preferences.vibrations =
+              this.checked;
+
+            sauvegarderPreferences();
+          }
+        );
+
+      elements.reglageSon
+        .addEventListener(
+          "change",
+          function() {
+            preferences.son =
+              this.checked;
+
+            sauvegarderPreferences();
+          }
+        );
+
+      elements.reglageModeSombre
+        .addEventListener(
+          "change",
+          function() {
+            preferences.modeSombre =
+              this.checked;
+
+            sauvegarderPreferences();
+            appliquerModeSombre();
+          }
+        );
+
+      document
+        .getElementById(
+          "changerPrenom"
+        )
+        .addEventListener(
+          "click",
+          changerPrenom
+        );
+
+      document
+        .getElementById(
+          "reinitialiserAutorisations"
+        )
+        .addEventListener(
+          "click",
+          reinitialiserAutorisations
+        );
+
+      document
+        .getElementById(
+          "fermerReglages"
+        )
+        .addEventListener(
+          "click",
+          fermerReglages
+        );
     }
 
-    document
-      .getElementById(
-        "boutonNotifications"
-      )
-      .addEventListener(
-        "click",
-        function() {
-          window.OneSignalDeferred =
-            window.OneSignalDeferred || [];
 
-          OneSignalDeferred.push(
-            async function(
-              OneSignal
-            ) {
-              if (
-                prenomActif
-              ) {
-                await OneSignal.login(
-                  externalIdDepuisPrenom(
-                    prenomActif
-                  )
-                );
-              }
+    function gererMessageApplication(
+      evenement
+    ) {
+      const donnees =
+        evenement.data || {};
 
-              await OneSignal
-                .Notifications
-                .requestPermission();
-
-              if (
-                OneSignal.Notifications.permission
-              ) {
-                await OneSignal
-                  .User
-                  .PushSubscription
-                  .optIn();
-              }
-
-              mettreAJourBarreNotifications(
-                OneSignal
-              );
-            }
-          );
-        }
-      );
-
-    window.addEventListener(
-      "message",
-      function(event) {
-        const donnees =
-          event.data || {};
-
-        if (
-          donnees.type !==
-            "capfun-prenom" ||
-          !donnees.prenom
-        ) {
-          return;
-        }
-
+      if (
+        donnees.type ===
+          "capfun-prenom" &&
+        donnees.prenom
+      ) {
         prenomActif =
           String(
             donnees.prenom
@@ -362,29 +892,534 @@
           prenomActif
         );
 
-        window.OneSignalDeferred =
-          window.OneSignalDeferred || [];
+        associerOneSignalAuPrenom();
 
-        OneSignalDeferred.push(
-          async function(
-            OneSignal
-          ) {
-            await OneSignal.login(
-              externalIdDepuisPrenom(
-                prenomActif
-              )
-            );
+        if (
+          localStorage.getItem(
+            CLE_ASSISTANT_TERMINE
+          ) !==
+            "1"
+        ) {
+          ouvrirAssistantPremierLancement();
+        }
 
-            mettreAJourBarreNotifications(
-              OneSignal
-            );
-          }
-        );
+        return;
       }
-    );
 
-    chargerApplication();
-    initialiserOneSignal();
+      if (
+        donnees.type ===
+          "campmanager-open-settings"
+      ) {
+        ouvrirReglages();
+      }
+    }
+
+
+    function associerOneSignalAuPrenom() {
+      if (
+        !prenomActif
+      ) {
+        return;
+      }
+
+      window.OneSignalDeferred =
+        window.OneSignalDeferred || [];
+
+      OneSignalDeferred.push(
+        async function(
+          OneSignal
+        ) {
+          try {
+            await OneSignal.logout();
+          } catch (erreur) {
+            // Aucun utilisateur précédent.
+          }
+
+          await OneSignal.login(
+            externalIdDepuisPrenom(
+              prenomActif
+            )
+          );
+
+          await actualiserEtatNotifications(
+            OneSignal
+          );
+        }
+      );
+    }
+
+
+    function ouvrirAssistantPremierLancement() {
+      elements.premierVibrations.checked =
+        preferences.vibrations;
+
+      elements.premierNotifications.checked =
+        false;
+
+      if (
+        !vibrationDisponible()
+      ) {
+        elements.premierVibrations.disabled =
+          true;
+
+        elements.premierVibrations.checked =
+          false;
+
+        elements.aideVibrationPremier.textContent =
+          "La vibration dans l’application n’est pas disponible sur cet appareil. " +
+          "Les notifications système peuvent toutefois vibrer selon les réglages du téléphone.";
+      }
+
+      elements.assistant.classList.remove(
+        "cache"
+      );
+    }
+
+
+    async function gererActivationNotificationsPremierLancement() {
+      if (
+        !elements.premierNotifications.checked
+      ) {
+        return;
+      }
+
+      const active =
+        await demanderNotifications();
+
+      elements.premierNotifications.checked =
+        active;
+    }
+
+
+    async function gererActivationNotificationsReglages() {
+      if (
+        elements.reglageNotifications.checked
+      ) {
+        const active =
+          await demanderNotifications();
+
+        elements.reglageNotifications.checked =
+          active;
+      } else {
+        await desactiverNotifications();
+      }
+    }
+
+
+    function demanderNotifications() {
+      return new Promise(
+        function(resolve) {
+          window.OneSignalDeferred =
+            window.OneSignalDeferred || [];
+
+          OneSignalDeferred.push(
+            async function(
+              OneSignal
+            ) {
+              try {
+                if (
+                  prenomActif
+                ) {
+                  await OneSignal.login(
+                    externalIdDepuisPrenom(
+                      prenomActif
+                    )
+                  );
+                }
+
+                if (
+                  !OneSignal.Notifications.permission
+                ) {
+                  await OneSignal
+                    .Notifications
+                    .requestPermission();
+                }
+
+                if (
+                  OneSignal.Notifications.permission
+                ) {
+                  await OneSignal
+                    .User
+                    .PushSubscription
+                    .optIn();
+                }
+
+                await actualiserEtatNotifications(
+                  OneSignal
+                );
+
+                resolve(
+                  !!OneSignal.Notifications.permission
+                );
+              } catch (erreur) {
+                alert(
+                  "Impossible d’activer les notifications.\n\n" +
+                  "Si elles ont été refusées dans les réglages du téléphone, " +
+                  "il faut les réautoriser depuis les réglages du navigateur ou de l’application."
+                );
+
+                resolve(
+                  false
+                );
+              }
+            }
+          );
+        }
+      );
+    }
+
+
+    function desactiverNotifications() {
+      return new Promise(
+        function(resolve) {
+          window.OneSignalDeferred =
+            window.OneSignalDeferred || [];
+
+          OneSignalDeferred.push(
+            async function(
+              OneSignal
+            ) {
+              try {
+                await OneSignal
+                  .User
+                  .PushSubscription
+                  .optOut();
+
+                await actualiserEtatNotifications(
+                  OneSignal
+                );
+              } finally {
+                resolve();
+              }
+            }
+          );
+        }
+      );
+    }
+
+
+    async function actualiserEtatNotifications(
+      OneSignal
+    ) {
+      const permission =
+        !!OneSignal.Notifications.permission;
+
+      let inscrit =
+        false;
+
+      try {
+        inscrit =
+          !!OneSignal
+            .User
+            .PushSubscription
+            .optedIn;
+      } catch (erreur) {
+        inscrit =
+          permission;
+      }
+
+      const actif =
+        permission &&
+        inscrit;
+
+      if (
+        elements.reglageNotifications
+      ) {
+        elements.reglageNotifications.checked =
+          actif;
+      }
+
+      if (
+        elements.etatNotifications
+      ) {
+        elements.etatNotifications.textContent =
+          actif
+            ? "Activées"
+            : (
+                permission
+                  ? "Désactivées pour CampManager"
+                  : "Non autorisées sur ce téléphone"
+              );
+      }
+    }
+
+
+    function terminerAssistant() {
+      preferences.vibrations =
+        vibrationDisponible()
+          ? elements.premierVibrations.checked
+          : false;
+
+      sauvegarderPreferences();
+
+      localStorage.setItem(
+        CLE_ASSISTANT_TERMINE,
+        "1"
+      );
+
+      elements.assistant.classList.add(
+        "cache"
+      );
+
+      envoyerPreferencesVersApplication();
+    }
+
+
+    function ouvrirReglages() {
+      elements.prenomReglages.textContent =
+        prenomActif ||
+        "Aucun prénom sélectionné";
+
+      elements.reglageVibrations.checked =
+        preferences.vibrations;
+
+      elements.reglageVibrations.disabled =
+        !vibrationDisponible();
+
+      if (
+        !vibrationDisponible()
+      ) {
+        elements.aideVibration.textContent =
+          "Non disponible dans l’application sur cet appareil.";
+      }
+
+      elements.reglageSon.checked =
+        preferences.son;
+
+      elements.reglageModeSombre.checked =
+        preferences.modeSombre;
+
+      elements.optionSon.style.display =
+        estAndroid()
+          ? "block"
+          : "none";
+
+      actualiserEtatConnexion();
+
+      window.OneSignalDeferred =
+        window.OneSignalDeferred || [];
+
+      OneSignalDeferred.push(
+        function(
+          OneSignal
+        ) {
+          actualiserEtatNotifications(
+            OneSignal
+          );
+        }
+      );
+
+      elements.reglages.classList.remove(
+        "cache"
+      );
+    }
+
+
+    function fermerReglages() {
+      elements.reglages.classList.add(
+        "cache"
+      );
+    }
+
+
+    function changerPrenom() {
+      fermerReglages();
+
+      localStorage.removeItem(
+        CLE_PRENOM_CONTENEUR
+      );
+
+      prenomActif =
+        "";
+
+      window.OneSignalDeferred =
+        window.OneSignalDeferred || [];
+
+      OneSignalDeferred.push(
+        async function(
+          OneSignal
+        ) {
+          try {
+            await OneSignal.logout();
+          } catch (erreur) {}
+        }
+      );
+
+      envoyerVersApplication({
+        type:
+          "campmanager-change-prenom"
+      });
+    }
+
+
+    function reinitialiserAutorisations() {
+      const confirmation =
+        confirm(
+          "Réinitialiser CampManager Mobile sur ce téléphone ?\n\n" +
+          "Le prénom et les préférences de l’application seront supprimés.\n\n" +
+          "Important : si les notifications ont été refusées dans les réglages " +
+          "système de l’iPhone ou d’Android, le navigateur ne permet pas de " +
+          "réinitialiser cette autorisation automatiquement."
+        );
+
+      if (
+        !confirmation
+      ) {
+        return;
+      }
+
+      window.OneSignalDeferred =
+        window.OneSignalDeferred || [];
+
+      OneSignalDeferred.push(
+        async function(
+          OneSignal
+        ) {
+          try {
+            await OneSignal
+              .User
+              .PushSubscription
+              .optOut();
+
+            await OneSignal.logout();
+          } catch (erreur) {}
+        }
+      );
+
+      [
+        CLE_PRENOM_CONTENEUR,
+        CLE_ASSISTANT_TERMINE,
+        CLE_VIBRATIONS,
+        CLE_SON,
+        CLE_SOMBRE
+      ].forEach(
+        function(cle) {
+          localStorage.removeItem(
+            cle
+          );
+        }
+      );
+
+      preferences.vibrations =
+        true;
+
+      preferences.son =
+        false;
+
+      preferences.modeSombre =
+        false;
+
+      prenomActif =
+        "";
+
+      appliquerModeSombre();
+
+      fermerReglages();
+
+      envoyerVersApplication({
+        type:
+          "campmanager-reset"
+      });
+    }
+
+
+    function configurerOptionsAppareil() {
+      if (
+        !vibrationDisponible()
+      ) {
+        preferences.vibrations =
+          false;
+      }
+
+      if (
+        !estAndroid()
+      ) {
+        preferences.son =
+          false;
+      }
+    }
+
+
+    function sauvegarderPreferences() {
+      localStorage.setItem(
+        CLE_VIBRATIONS,
+        preferences.vibrations
+          ? "1"
+          : "0"
+      );
+
+      localStorage.setItem(
+        CLE_SON,
+        preferences.son
+          ? "1"
+          : "0"
+      );
+
+      localStorage.setItem(
+        CLE_SOMBRE,
+        preferences.modeSombre
+          ? "1"
+          : "0"
+      );
+
+      envoyerPreferencesVersApplication();
+    }
+
+
+    function appliquerModeSombre() {
+      document.body.classList.toggle(
+        "sombre",
+        !!preferences.modeSombre
+      );
+    }
+
+
+    function envoyerPreferencesVersApplication() {
+      envoyerVersApplication({
+        type:
+          "campmanager-preferences",
+
+        vibrations:
+          preferences.vibrations,
+
+        son:
+          preferences.son,
+
+        modeSombre:
+          preferences.modeSombre
+      });
+    }
+
+
+    function envoyerVersApplication(
+      donnees
+    ) {
+      if (
+        !elements.iframe ||
+        !elements.iframe.contentWindow
+      ) {
+        return;
+      }
+
+      elements.iframe.contentWindow.postMessage(
+        donnees,
+        "*"
+      );
+    }
+
+
+    function actualiserEtatConnexion() {
+      if (
+        !elements.etatConnexion
+      ) {
+        return;
+      }
+
+      elements.etatConnexion.textContent =
+        navigator.onLine
+          ? "🟢 En ligne"
+          : "🟠 Hors connexion";
+    }
   </script>
 </body>
 </html>
