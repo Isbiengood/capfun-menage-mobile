@@ -1,10 +1,26 @@
 {
+  "id": "/capfun-menage-mobile/",
   "name": "CampManager Mobile",
   "short_name": "CampManager",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/capfun-menage-mobile/",
+  "scope": "/capfun-menage-mobile/",
   "display": "standalone",
   "background_color": "#f3f5f8",
   "theme_color": "#17365d",
-  "description": "Suivi opérationnel du ménage et des contrôles des hébergements."
+  "description": "Suivi opérationnel du ménage et des contrôles des hébergements.",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/capfun-menage-mobile/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/capfun-menage-mobile/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

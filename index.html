@@ -7,14 +7,12 @@
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
   <meta name="theme-color" content="#17365d">
-
-  <!-- iPhone / iPad : forcer le comportement application plein écran -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CampManager">
-
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=stable-pwa-1">
   <title>CampManager Mobile</title>
-  <link rel="manifest" href="./manifest.json">
+  <link rel="manifest" href="./manifest.json?v=stable-pwa-1">
 
   <script src="./config.js"></script>
   <script
@@ -42,14 +40,10 @@
       margin: 0;
       width: 100%;
       height: 100%;
-      min-height: 100vh;
-      min-height: 100dvh;
       overflow: hidden;
       background: var(--fond);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       color: var(--texte);
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
     }
 
     body.sombre {
@@ -61,11 +55,8 @@
     }
 
     #cadreApplication {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
+      width: 100%;
+      height: 100%;
       border: 0;
       background: var(--carte);
     }
@@ -450,16 +441,6 @@
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
 
-    /*
-     * iPhone :
-     * Safari ne transfère pas le localStorage vers une web app
-     * ajoutée à l'écran d'accueil, mais il transfère les cookies.
-     *
-     * Le prénom est donc conservé dans les deux.
-     */
-    const COOKIE_PRENOM_CAMPMANAGER =
-      "campManagerPrenom";
-
     const CLE_ASSISTANT_TERMINE =
       "campManagerAssistantTermine";
 
@@ -476,123 +457,9 @@
       false;
 
     let prenomActif =
-      "";
-
-    try {
-      prenomActif =
-        String(
-          localStorage.getItem(
-            CLE_PRENOM_CONTENEUR
-          ) ||
-          lireCookieCampManager_(
-            COOKIE_PRENOM_CAMPMANAGER
-          ) ||
-          ""
-        ).trim();
-
-      /*
-       * Au premier lancement depuis l'écran d'accueil iPhone,
-       * le cookie a été copié par Safari mais pas le localStorage.
-       * On recrée donc immédiatement le localStorage de la web app.
-       */
-      if (
-        prenomActif
-      ) {
-        enregistrerPrenomCampManager_(
-          prenomActif
-        );
-      }
-    } catch (erreur) {}
-
-    function lireCookieCampManager_(
-      nom
-    ) {
-      try {
-        const cookies =
-          String(
-            document.cookie || ""
-          ).split(";");
-
-        for (
-          let i = 0;
-          i < cookies.length;
-          i++
-        ) {
-          const cookie =
-            cookies[i].trim();
-
-          const prefixe =
-            nom + "=";
-
-          if (
-            cookie.indexOf(
-              prefixe
-            ) === 0
-          ) {
-            return decodeURIComponent(
-              cookie.substring(
-                prefixe.length
-              )
-            );
-          }
-        }
-      } catch (erreur) {}
-
-      return "";
-    }
-
-
-    function enregistrerPrenomCampManager_(
-      prenom
-    ) {
-      const valeur =
-        String(
-          prenom || ""
-        ).trim();
-
-      if (
-        !valeur
-      ) {
-        return;
-      }
-
-      try {
-        localStorage.setItem(
-          CLE_PRENOM_CONTENEUR,
-          valeur
-        );
-      } catch (erreur) {}
-
-      /*
-       * Cookie first-party GitHub Pages.
-       * Il sera copié par iOS vers la web app installée.
-       */
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CAMPMANAGER +
-          "=" +
-          encodeURIComponent(
-            valeur
-          ) +
-          "; Max-Age=31536000; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
-
-    function effacerPrenomCampManager_() {
-      try {
-        localStorage.removeItem(
-          CLE_PRENOM_CONTENEUR
-        );
-      } catch (erreur) {}
-
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CAMPMANAGER +
-          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
+      localStorage.getItem(
+        CLE_PRENOM_CONTENEUR
+      ) || "";
 
     function boolLocalStorage(
       cle,
@@ -634,6 +501,29 @@
     };
 
     const elements = {};
+
+    /*
+     * Nettoyage unique des caches créés pendant les essais V3.3 hors connexion.
+     * Aucun mode hors connexion n'est réactivé.
+     */
+    if (
+      "caches" in window
+    ) {
+      caches.keys()
+        .then(function(noms) {
+          return Promise.all(
+            noms
+              .filter(function(nom) {
+                return nom.indexOf("campmanager-shell-") === 0;
+              })
+              .map(function(nom) {
+                return caches.delete(nom);
+              })
+          );
+        })
+        .catch(function() {});
+    }
+
 
     document.addEventListener(
       "DOMContentLoaded",
@@ -1133,7 +1023,8 @@
             donnees.prenom
           ).trim();
 
-        enregistrerPrenomCampManager_(
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
           prenomActif
         );
 
@@ -1470,7 +1361,9 @@
     function changerPrenom() {
       fermerReglages();
 
-      effacerPrenomCampManager_();
+      localStorage.removeItem(
+        CLE_PRENOM_CONTENEUR
+      );
 
       prenomActif =
         "";
@@ -1529,9 +1422,8 @@
         }
       );
 
-      effacerPrenomCampManager_();
-
       [
+        CLE_PRENOM_CONTENEUR,
         CLE_ASSISTANT_TERMINE,
         CLE_VIBRATIONS,
         CLE_SON,
@@ -1564,35 +1456,6 @@
         type:
           "campmanager-reset"
       });
-    }
-
-
-    /*
-     * Test facultatif depuis la console :
-     * diagnosticPrenomCampManager()
-     */
-    function diagnosticPrenomCampManager() {
-      return {
-        localStorage:
-          localStorage.getItem(
-            CLE_PRENOM_CONTENEUR
-          ) || "",
-        cookie:
-          lireCookieCampManager_(
-            COOKIE_PRENOM_CAMPMANAGER
-          ),
-        prenomActif:
-          prenomActif,
-        standalone:
-          (
-            window.matchMedia &&
-            window.matchMedia(
-              "(display-mode: standalone)"
-            ).matches
-          ) ||
-          navigator.standalone ===
-            true
-      };
     }
 
 
