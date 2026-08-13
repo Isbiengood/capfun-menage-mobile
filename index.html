@@ -219,6 +219,87 @@
     }
 
     /* ======================================================
+     * CAMPMANAGER V3.3.3 — PRÉNOM MÉMORISÉ CÔTÉ GITHUB
+     * ====================================================== */
+
+    #ecranPrenomLocal {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: var(--fond);
+      color: var(--texte);
+    }
+
+    #ecranPrenomLocal.visible {
+      display: flex;
+    }
+
+    .prenom-local-carte {
+      width: min(460px, 100%);
+      padding: 22px;
+      border: 1px solid var(--bordure);
+      border-radius: 20px;
+      background: var(--carte);
+      box-shadow: 0 8px 28px rgba(0,0,0,.14);
+    }
+
+    .prenom-local-carte h1 {
+      margin: 0 0 8px;
+      color: var(--bleu);
+      font-size: 24px;
+    }
+
+    body.sombre .prenom-local-carte h1 {
+      color: #d6e6ff;
+    }
+
+    .prenom-local-carte p {
+      margin: 0 0 17px;
+      line-height: 1.5;
+      color: var(--secondaire);
+    }
+
+    #choixPrenomLocal {
+      width: 100%;
+      min-height: 50px;
+      margin: 0 0 14px;
+      padding: 0 12px;
+      border: 1px solid var(--bordure);
+      border-radius: 12px;
+      background: var(--carte);
+      color: var(--texte);
+      font-size: 17px;
+    }
+
+    #confirmerPrenomLocal {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 13px;
+      background: #17365d;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 850;
+    }
+
+    #confirmerPrenomLocal:disabled {
+      opacity: .45;
+    }
+
+    #messagePrenomLocal {
+      min-height: 22px;
+      margin-top: 12px;
+      text-align: center;
+      color: var(--secondaire);
+      font-weight: 700;
+    }
+
+
+    /* ======================================================
      * CAMPMANAGER V3.3 — MODE HORS CONNEXION
      * ====================================================== */
 
@@ -385,6 +466,37 @@
 
 <body>
   <div id="erreurConfiguration"></div>
+
+  <!-- V3.3.3 — choix local du prénom, une seule fois -->
+  <section
+    id="ecranPrenomLocal"
+    aria-live="polite"
+  >
+    <div class="prenom-local-carte">
+      <h1>👤 Qui êtes-vous ?</h1>
+      <p>
+        Ce prénom sera enregistré directement sur ce téléphone.
+        Vous n'aurez plus à le sélectionner à chaque ouverture.
+      </p>
+
+      <select id="choixPrenomLocal">
+        <option value="">
+          Chargement des utilisateurs…
+        </option>
+      </select>
+
+      <button
+        id="confirmerPrenomLocal"
+        type="button"
+        disabled
+      >
+        Continuer
+      </button>
+
+      <div id="messagePrenomLocal"></div>
+    </div>
+  </section>
+
 
   <iframe
     id="cadreApplication"
@@ -623,7 +735,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.3.2 — Build 2026.08.13<br>
+          Version 3.3.3 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -645,10 +757,25 @@
 
   <script>
     const VERSION =
-      "3.3.2";
+      "3.3.3";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
+
+    /*
+     * V3.3.3 :
+     * le prénom est désormais une donnée du CONTENEUR GITHUB,
+     * et non plus une donnée dépendante de l'iframe Apps Script.
+     *
+     * On le duplique dans :
+     * - localStorage ;
+     * - un cookie first-party GitHub Pages pendant 365 jours.
+     */
+    const CLE_PRENOM_LOCAL_V333_ =
+      "campManagerPrenomLocalV333";
+
+    const COOKIE_PRENOM_LOCAL_V333_ =
+      "campManagerPrenomLocalV333";
 
     const CLE_ASSISTANT_TERMINE =
       "campManagerAssistantTermine";
@@ -669,11 +796,9 @@
       "campManagerSnapshotUtilisateurV332:";
 
     /*
-     * Si le prénom principal a disparu mais qu'un snapshot existe,
-     * on pourra le restaurer depuis le snapshot.
+     * La récupération du prénom se fait maintenant directement
+     * depuis le stockage GitHub + cookie. Le snapshot reste un secours.
      */
-    restaurerPrenomDepuisSnapshotV332_();
-
     let cadreAppsScriptPret =
       false;
 
@@ -707,9 +832,7 @@
       false;
 
     let prenomActif =
-      localStorage.getItem(
-        CLE_PRENOM_CONTENEUR
-      ) || "";
+      lirePrenomLocalV333_();
 
     function boolLocalStorage(
       cle,
@@ -758,6 +881,26 @@
         elements.iframe =
           document.getElementById(
             "cadreApplication"
+          );
+
+        elements.ecranPrenomLocal =
+          document.getElementById(
+            "ecranPrenomLocal"
+          );
+
+        elements.choixPrenomLocal =
+          document.getElementById(
+            "choixPrenomLocal"
+          );
+
+        elements.confirmerPrenomLocal =
+          document.getElementById(
+            "confirmerPrenomLocal"
+          );
+
+        elements.messagePrenomLocal =
+          document.getElementById(
+            "messagePrenomLocal"
           );
 
         elements.assistant =
@@ -878,17 +1021,18 @@
         appliquerModeSombre();
         configurerOptionsAppareil();
         brancherEvenements();
-        chargerApplication();
         initialiserOneSignal();
+
+        demarrerCampManagerV333_();
 
         window.addEventListener(
           "online",
-          gererRetourConnexionV331_
+          gererRetourConnexionV333_
         );
 
         window.addEventListener(
           "offline",
-          programmerVerificationPerteConnexionV331_
+          gererPerteConnexionV333_
         );
 
         if (
@@ -902,19 +1046,796 @@
         }
 
         actualiserEtatConnexion();
-
-        /*
-         * Au démarrage, même si navigator.onLine vaut momentanément false,
-         * on ne bascule plus immédiatement hors connexion.
-         */
-        if (
-          navigator.onLine ===
-            false
-        ) {
-          programmerVerificationPerteConnexionV331_();
-        }
       }
     );
+
+
+    /**
+     * ========================================================
+     * V3.3.3 — PRÉNOM LOCAL + SNAPSHOT DIRECT
+     * ========================================================
+     */
+
+    function lireCookieV333_(
+      nom
+    ) {
+      try {
+        const morceaux =
+          String(
+            document.cookie || ""
+          ).split(";");
+
+        for (
+          let i = 0;
+          i < morceaux.length;
+          i++
+        ) {
+          const partie =
+            morceaux[i].trim();
+
+          const prefixe =
+            nom + "=";
+
+          if (
+            partie.indexOf(
+              prefixe
+            ) ===
+              0
+          ) {
+            return decodeURIComponent(
+              partie.substring(
+                prefixe.length
+              )
+            );
+          }
+        }
+      } catch (erreur) {}
+
+      return "";
+    }
+
+
+    function lirePrenomLocalV333_() {
+      let prenom =
+        "";
+
+      try {
+        prenom =
+          String(
+            localStorage.getItem(
+              CLE_PRENOM_LOCAL_V333_
+            ) ||
+            localStorage.getItem(
+              CLE_PRENOM_CONTENEUR
+            ) ||
+            lireCookieV333_(
+              COOKIE_PRENOM_LOCAL_V333_
+            ) ||
+            ""
+          ).trim();
+
+        if (
+          !prenom
+        ) {
+          /*
+           * Dernière chance : ancien snapshot.
+           */
+          const brut =
+            localStorage.getItem(
+              CLE_SNAPSHOT_HORS_CONNEXION
+            );
+
+          if (
+            brut
+          ) {
+            const snapshot =
+              JSON.parse(
+                brut
+              );
+
+            if (
+              snapshot &&
+              snapshot.prenom
+            ) {
+              prenom =
+                String(
+                  snapshot.prenom
+                ).trim();
+            }
+          }
+        }
+
+        if (
+          prenom
+        ) {
+          sauvegarderPrenomLocalV333_(
+            prenom
+          );
+        }
+
+      } catch (erreur) {}
+
+      return prenom;
+    }
+
+
+    function sauvegarderPrenomLocalV333_(
+      prenom
+    ) {
+      const valeur =
+        String(
+          prenom || ""
+        ).trim();
+
+      if (
+        !valeur
+      ) {
+        return;
+      }
+
+      try {
+        localStorage.setItem(
+          CLE_PRENOM_LOCAL_V333_,
+          valeur
+        );
+
+        /*
+         * Compatibilité avec les versions précédentes.
+         */
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
+          valeur
+        );
+      } catch (erreur) {}
+
+      try {
+        document.cookie =
+          COOKIE_PRENOM_LOCAL_V333_ +
+          "=" +
+          encodeURIComponent(
+            valeur
+          ) +
+          "; Max-Age=31536000; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
+      } catch (erreur) {}
+    }
+
+
+    function effacerPrenomLocalV333_() {
+      try {
+        localStorage.removeItem(
+          CLE_PRENOM_LOCAL_V333_
+        );
+
+        localStorage.removeItem(
+          CLE_PRENOM_CONTENEUR
+        );
+      } catch (erreur) {}
+
+      try {
+        document.cookie =
+          COOKIE_PRENOM_LOCAL_V333_ +
+          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
+      } catch (erreur) {}
+    }
+
+
+    async function demarrerCampManagerV333_() {
+      prenomActif =
+        lirePrenomLocalV333_();
+
+      /*
+       * VRAI hors connexion :
+       * si le navigateur annonce déjà une coupure, on montre le cache
+       * immédiatement. Plus d'attente de 20 à 30 secondes.
+       *
+       * Une vérification réseau se fait ensuite en arrière-plan pour
+       * corriger un éventuel faux signal "offline".
+       */
+      if (
+        navigator.onLine ===
+          false
+      ) {
+        afficherModeHorsConnexionV33_();
+
+        testerConnexionJsonpV333_()
+          .then(
+            function(connexionReelle) {
+              if (
+                connexionReelle
+              ) {
+                gererRetourConnexionV333_();
+              }
+            }
+          );
+
+        return;
+      }
+
+      /*
+       * Premier lancement sur cet appareil :
+       * le prénom est choisi dans GitHub, puis sauvegardé localement
+       * AVANT de lancer l'iframe Apps Script.
+       */
+      if (
+        !prenomActif
+      ) {
+        await afficherSelectionPrenomLocalV333_();
+        return;
+      }
+
+      sauvegarderPrenomLocalV333_(
+        prenomActif
+      );
+
+      /*
+       * Actualise le cache sans bloquer l'ouverture normale.
+       */
+      rafraichirSnapshotServeurV333_(
+        prenomActif
+      );
+
+      chargerApplication();
+
+      demarrerRafraichissementSnapshotV333_();
+    }
+
+
+    async function afficherSelectionPrenomLocalV333_() {
+      if (
+        !elements.ecranPrenomLocal
+      ) {
+        return;
+      }
+
+      if (
+        elements.iframe
+      ) {
+        elements.iframe.style.display =
+          "none";
+      }
+
+      elements.ecranPrenomLocal.classList.add(
+        "visible"
+      );
+
+      elements.choixPrenomLocal.innerHTML =
+        '<option value="">Chargement des utilisateurs…</option>';
+
+      elements.confirmerPrenomLocal.disabled =
+        true;
+
+      elements.messagePrenomLocal.textContent =
+        "";
+
+      if (
+        navigator.onLine ===
+          false
+      ) {
+        elements.choixPrenomLocal.innerHTML =
+          '<option value="">Internet nécessaire pour le premier choix</option>';
+
+        elements.messagePrenomLocal.textContent =
+          "Connectez ce téléphone une première fois pour mémoriser le prénom.";
+
+        return;
+      }
+
+      try {
+        const reponse =
+          await appelJsonpV333_(
+            "personnes",
+            {},
+            8000
+          );
+
+        const personnes =
+          reponse &&
+          reponse.ok &&
+          Array.isArray(
+            reponse.personnes
+          )
+            ? reponse.personnes
+            : [];
+
+        elements.choixPrenomLocal.innerHTML =
+          '<option value="">Choisir mon prénom</option>';
+
+        personnes.forEach(
+          function(personne) {
+            const option =
+              document.createElement(
+                "option"
+              );
+
+            option.value =
+              personne.prenom;
+
+            let suffixe =
+              "";
+
+            if (
+              personne.role ===
+                "gouvernante"
+            ) {
+              suffixe =
+                " 👑";
+
+            } else if (
+              personne.role ===
+                "menage"
+            ) {
+              suffixe =
+                " 🧹";
+
+            } else if (
+              personne.role ===
+                "mixte"
+            ) {
+              suffixe =
+                " 🧹👑";
+            }
+
+            option.textContent =
+              personne.prenom +
+              suffixe;
+
+            elements.choixPrenomLocal.appendChild(
+              option
+            );
+          }
+        );
+
+        if (
+          personnes.length ===
+            0
+        ) {
+          elements.messagePrenomLocal.textContent =
+            "Aucun utilisateur disponible.";
+        }
+
+      } catch (erreur) {
+        elements.choixPrenomLocal.innerHTML =
+          '<option value="">Impossible de charger les utilisateurs</option>';
+
+        elements.messagePrenomLocal.textContent =
+          "Vérifiez la connexion puis rouvrez CampManager.";
+      }
+    }
+
+
+    async function confirmerPrenomLocalV333_() {
+      const prenom =
+        String(
+          elements.choixPrenomLocal.value || ""
+        ).trim();
+
+      if (
+        !prenom
+      ) {
+        return;
+      }
+
+      /*
+       * C'est ici que le prénom est réellement mémorisé sur le téléphone.
+       * Cette sauvegarde ne dépend pas de l'iframe Apps Script.
+       */
+      prenomActif =
+        prenom;
+
+      sauvegarderPrenomLocalV333_(
+        prenomActif
+      );
+
+      elements.confirmerPrenomLocal.disabled =
+        true;
+
+      elements.messagePrenomLocal.textContent =
+        "✅ Prénom mémorisé sur ce téléphone.";
+
+      /*
+       * Création immédiate du snapshot hors connexion.
+       */
+      await rafraichirSnapshotServeurV333_(
+        prenomActif
+      );
+
+      elements.ecranPrenomLocal.classList.remove(
+        "visible"
+      );
+
+      if (
+        elements.iframe
+      ) {
+        elements.iframe.style.display =
+          "block";
+      }
+
+      associerOneSignalAuPrenom();
+
+      chargerApplication();
+
+      demarrerRafraichissementSnapshotV333_();
+    }
+
+
+    function urlAppsScriptV333_() {
+      const config =
+        window.CAPFUN_CONFIG || {};
+
+      return String(
+        config.APPS_SCRIPT_URL || ""
+      ).trim();
+    }
+
+
+    function appelJsonpV333_(
+      action,
+      parametres,
+      delaiMaximum
+    ) {
+      return new Promise(
+        function(resolve, reject) {
+          const urlBase =
+            urlAppsScriptV333_();
+
+          if (
+            !urlBase
+          ) {
+            reject(
+              new Error(
+                "URL Apps Script absente."
+              )
+            );
+
+            return;
+          }
+
+          const callback =
+            "__cmJsonpV333_" +
+            Date.now() +
+            "_" +
+            Math.floor(
+              Math.random() *
+              1000000
+            );
+
+          const script =
+            document.createElement(
+              "script"
+            );
+
+          let termine =
+            false;
+
+          const nettoyer =
+            function() {
+              if (
+                script.parentNode
+              ) {
+                script.parentNode.removeChild(
+                  script
+                );
+              }
+
+              try {
+                delete window[
+                  callback
+                ];
+              } catch (erreur) {
+                window[
+                  callback
+                ] =
+                  undefined;
+              }
+            };
+
+          const timer =
+            setTimeout(
+              function() {
+                if (
+                  termine
+                ) {
+                  return;
+                }
+
+                termine =
+                  true;
+
+                nettoyer();
+
+                reject(
+                  new Error(
+                    "Délai serveur dépassé."
+                  )
+                );
+              },
+              delaiMaximum ||
+              7000
+            );
+
+          window[
+            callback
+          ] =
+            function(reponse) {
+              if (
+                termine
+              ) {
+                return;
+              }
+
+              termine =
+                true;
+
+              clearTimeout(
+                timer
+              );
+
+              nettoyer();
+
+              resolve(
+                reponse
+              );
+            };
+
+          const recherche =
+            new URLSearchParams();
+
+          recherche.set(
+            "api",
+            action
+          );
+
+          recherche.set(
+            "callback",
+            callback
+          );
+
+          recherche.set(
+            "_",
+            Date.now()
+          );
+
+          Object.keys(
+            parametres || {}
+          ).forEach(
+            function(cle) {
+              recherche.set(
+                cle,
+                parametres[
+                  cle
+                ]
+              );
+            }
+          );
+
+          script.src =
+            urlBase +
+            (
+              urlBase.indexOf("?") ===
+                -1
+                ? "?"
+                : "&"
+            ) +
+            recherche.toString();
+
+          script.onerror =
+            function() {
+              if (
+                termine
+              ) {
+                return;
+              }
+
+              termine =
+                true;
+
+              clearTimeout(
+                timer
+              );
+
+              nettoyer();
+
+              reject(
+                new Error(
+                  "Serveur inaccessible."
+                )
+              );
+            };
+
+          document.head.appendChild(
+            script
+          );
+        }
+      );
+    }
+
+
+    async function rafraichirSnapshotServeurV333_(
+      prenom
+    ) {
+      const valeur =
+        String(
+          prenom || ""
+        ).trim();
+
+      if (
+        !valeur ||
+        navigator.onLine ===
+          false
+      ) {
+        return false;
+      }
+
+      try {
+        const reponse =
+          await appelJsonpV333_(
+            "snapshot",
+            {
+              prenom:
+                valeur
+            },
+            9000
+          );
+
+        if (
+          !reponse ||
+          !reponse.ok ||
+          !reponse.data
+        ) {
+          return false;
+        }
+
+        const snapshot =
+          Object.assign(
+            {},
+            reponse.data,
+            {
+              version:
+                "3.3.3",
+              enregistreLe:
+                reponse.data.synchroniseLe ||
+                new Date().toISOString()
+            }
+          );
+
+        enregistrerSnapshotHorsConnexionV332_(
+          snapshot
+        );
+
+        sauvegarderPrenomLocalV333_(
+          snapshot.prenom ||
+          valeur
+        );
+
+        return true;
+
+      } catch (erreur) {
+        return false;
+      }
+    }
+
+
+    async function testerConnexionJsonpV333_() {
+      try {
+        const reponse =
+          await appelJsonpV333_(
+            "ping",
+            {},
+            3500
+          );
+
+        return !!(
+          reponse &&
+          reponse.ok
+        );
+
+      } catch (erreur) {
+        return false;
+      }
+    }
+
+
+    function gererPerteConnexionV333_() {
+      /*
+       * Affichage IMMÉDIAT du dernier état connu.
+       */
+      afficherModeHorsConnexionV33_();
+
+      /*
+       * Vérification silencieuse pour les rares faux "offline".
+       */
+      testerConnexionJsonpV333_()
+        .then(
+          function(connexionReelle) {
+            if (
+              connexionReelle
+            ) {
+              gererRetourConnexionV333_();
+            }
+          }
+        );
+    }
+
+
+    async function gererRetourConnexionV333_() {
+      const connexionReelle =
+        await testerConnexionJsonpV333_();
+
+      if (
+        !connexionReelle
+      ) {
+        return;
+      }
+
+      actualiserEtatConnexionV331_(
+        true
+      );
+
+      masquerModeHorsConnexionV33_();
+
+      if (
+        !prenomActif
+      ) {
+        prenomActif =
+          lirePrenomLocalV333_();
+      }
+
+      if (
+        !prenomActif
+      ) {
+        afficherSelectionPrenomLocalV333_();
+        return;
+      }
+
+      await rafraichirSnapshotServeurV333_(
+        prenomActif
+      );
+
+      chargerApplication();
+    }
+
+
+    let intervalleSnapshotV333_ =
+      null;
+
+    function demarrerRafraichissementSnapshotV333_() {
+      if (
+        intervalleSnapshotV333_
+      ) {
+        return;
+      }
+
+      intervalleSnapshotV333_ =
+        setInterval(
+          function() {
+            if (
+              prenomActif &&
+              navigator.onLine
+            ) {
+              rafraichirSnapshotServeurV333_(
+                prenomActif
+              );
+            }
+          },
+          60000
+        );
+
+      document.addEventListener(
+        "visibilitychange",
+        function() {
+          if (
+            document.visibilityState ===
+              "visible" &&
+            prenomActif &&
+            navigator.onLine
+          ) {
+            rafraichirSnapshotServeurV333_(
+              prenomActif
+            );
+          }
+        }
+      );
+    }
 
 
     function estAndroid() {
@@ -1072,7 +1993,7 @@
               }
             }
           },
-          20000
+          7000
         );
     }
 
@@ -1150,6 +2071,31 @@
         "message",
         gererMessageApplication
       );
+
+      if (
+        elements.choixPrenomLocal
+      ) {
+        elements.choixPrenomLocal
+          .addEventListener(
+            "change",
+            function() {
+              elements.confirmerPrenomLocal.disabled =
+                !String(
+                  this.value || ""
+                ).trim();
+            }
+          );
+      }
+
+      if (
+        elements.confirmerPrenomLocal
+      ) {
+        elements.confirmerPrenomLocal
+          .addEventListener(
+            "click",
+            confirmerPrenomLocalV333_
+          );
+      }
 
       document
         .getElementById(
@@ -1287,8 +2233,16 @@
 
         masquerModeHorsConnexionV33_();
 
+        if (
+          prenomActif
+        ) {
+          rafraichirSnapshotServeurV333_(
+            prenomActif
+          );
+        }
+
         /*
-         * V3.3.2 :
+         * Compatibilité avec le canal postMessage existant :
          * on demande explicitement au cadre Apps Script son dernier
          * prénom + snapshot. On ne dépend plus d'un unique message
          * spontané qui pourrait avoir été manqué.
@@ -1320,8 +2274,7 @@
               snapshot.prenom
             ).trim();
 
-          localStorage.setItem(
-            CLE_PRENOM_CONTENEUR,
+          sauvegarderPrenomLocalV333_(
             prenomActif
           );
         }
@@ -1799,9 +2752,7 @@
     function changerPrenom() {
       fermerReglages();
 
-      localStorage.removeItem(
-        CLE_PRENOM_CONTENEUR
-      );
+      effacerPrenomLocalV333_();
 
       prenomActif =
         "";
@@ -1819,10 +2770,11 @@
         }
       );
 
-      envoyerVersApplication({
-        type:
-          "campmanager-change-prenom"
-      });
+      /*
+       * On affiche directement le sélecteur GitHub.
+       * Aucun besoin de passer par l'écran d'identification Apps Script.
+       */
+      afficherSelectionPrenomLocalV333_();
     }
 
 
@@ -1866,7 +2818,8 @@
         CLE_VIBRATIONS,
         CLE_SON,
         CLE_SOMBRE,
-        CLE_SNAPSHOT_HORS_CONNEXION
+        CLE_SNAPSHOT_HORS_CONNEXION,
+        CLE_PRENOM_LOCAL_V333_
       ].forEach(
         function(cle) {
           localStorage.removeItem(
@@ -2060,8 +3013,7 @@
             texte
           );
 
-          localStorage.setItem(
-            CLE_PRENOM_CONTENEUR,
+          sauvegarderPrenomLocalV333_(
             String(
               snapshot.prenom
             ).trim()
@@ -2140,8 +3092,7 @@
               snapshot.prenom
             ).trim();
 
-          localStorage.setItem(
-            CLE_PRENOM_CONTENEUR,
+          sauvegarderPrenomLocalV333_(
             prenomActif
           );
         }
@@ -2187,8 +3138,7 @@
           snapshot &&
           snapshot.prenom
         ) {
-          localStorage.setItem(
-            CLE_PRENOM_CONTENEUR,
+          sauvegarderPrenomLocalV333_(
             String(
               snapshot.prenom
             ).trim()
@@ -2544,6 +3494,24 @@
 
         elements.offlineControles.style.display =
           "none";
+
+        /*
+         * Même sans snapshot, le prénom local reste visible.
+         */
+        if (
+          prenomActif
+        ) {
+          elements.offlineMeta.style.display =
+            "grid";
+
+          elements.offlineMeta.innerHTML =
+            "<strong>👤 " +
+            echapperHtmlV33_(
+              prenomActif
+            ) +
+            "</strong>" +
+            "<span>Aucune liste encore enregistrée.</span>";
+        }
 
         return;
       }
