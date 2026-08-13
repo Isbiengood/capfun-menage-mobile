@@ -1,5 +1,5 @@
 /*
- * CAMPMANAGER V3.3
+ * CAMPMANAGER V3.3.1
  *
  * Même service worker qu'avant pour conserver OneSignal.
  * On ajoute simplement le module de cache hors connexion.

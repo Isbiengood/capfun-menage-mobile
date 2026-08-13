@@ -623,7 +623,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.3.0 — Build 2026.08.13<br>
+          Version 3.3.1 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -645,7 +645,7 @@
 
   <script>
     const VERSION =
-      "3.3.0";
+      "3.3.1";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
@@ -673,6 +673,26 @@
 
     let modeHorsConnexionAffiche =
       false;
+
+    let verificationConnexionEnCoursV331_ =
+      false;
+
+    let minuteurPerteConnexionV331_ =
+      null;
+
+    /*
+     * V3.3.1 :
+     * navigator.onLine n'est plus considéré comme une preuve suffisante.
+     * Certains téléphones le passent brièvement à false au réveil.
+     *
+     * Le mode hors connexion n'est affiché qu'après échec d'un vrai
+     * appel réseau vers l'URL Apps Script, puis une deuxième tentative.
+     */
+    const DELAI_CONFIRMATION_HORS_LIGNE_V331_ =
+      1800;
+
+    const DELAI_SECONDE_TENTATIVE_V331_ =
+      1200;
 
     let oneSignalPret =
       false;
@@ -854,12 +874,12 @@
 
         window.addEventListener(
           "online",
-          gererRetourConnexionV33_
+          gererRetourConnexionV331_
         );
 
         window.addEventListener(
           "offline",
-          gererPerteConnexionV33_
+          programmerVerificationPerteConnexionV331_
         );
 
         if (
@@ -868,17 +888,21 @@
           elements.boutonReessayerHorsConnexion
             .addEventListener(
               "click",
-              reessayerConnexionV33_
+              reessayerConnexionV331_
             );
         }
 
         actualiserEtatConnexion();
 
+        /*
+         * Au démarrage, même si navigator.onLine vaut momentanément false,
+         * on ne bascule plus immédiatement hors connexion.
+         */
         if (
           navigator.onLine ===
             false
         ) {
-          gererPerteConnexionV33_();
+          programmerVerificationPerteConnexionV331_();
         }
       }
     );
@@ -1009,11 +1033,34 @@
 
       minuteurVerificationCadre =
         setTimeout(
-          function() {
+          async function() {
             if (
+              cadreAppsScriptPret
+            ) {
+              return;
+            }
+
+            /*
+             * V3.3.1 :
+             * un Apps Script lent ou un message frame-ready retardé
+             * ne signifie PAS que le téléphone est hors connexion.
+             */
+            const connexionReelle =
+              await testerConnexionReelleV331_();
+
+            if (
+              !connexionReelle &&
               !cadreAppsScriptPret
             ) {
-              afficherModeHorsConnexionV33_();
+              const confirmation =
+                await confirmerAbsenceConnexionV331_();
+
+              if (
+                !confirmation &&
+                !cadreAppsScriptPret
+              ) {
+                afficherModeHorsConnexionV33_();
+              }
             }
           },
           20000
@@ -1203,6 +1250,21 @@
         cadreAppsScriptPret =
           true;
 
+        actualiserEtatConnexionV331_(
+          true
+        );
+
+        if (
+          minuteurPerteConnexionV331_
+        ) {
+          clearTimeout(
+            minuteurPerteConnexionV331_
+          );
+
+          minuteurPerteConnexionV331_ =
+            null;
+        }
+
         if (
           minuteurVerificationCadre
         ) {
@@ -1214,11 +1276,7 @@
             null;
         }
 
-        if (
-          navigator.onLine
-        ) {
-          masquerModeHorsConnexionV33_();
-        }
+        masquerModeHorsConnexionV33_();
 
         return;
       }
@@ -1936,42 +1994,266 @@
     }
 
 
-    function gererPerteConnexionV33_() {
-      actualiserEtatConnexion();
-      afficherModeHorsConnexionV33_();
+    function programmerVerificationPerteConnexionV331_() {
+      if (
+        minuteurPerteConnexionV331_
+      ) {
+        clearTimeout(
+          minuteurPerteConnexionV331_
+        );
+      }
+
+      minuteurPerteConnexionV331_ =
+        setTimeout(
+          async function() {
+            minuteurPerteConnexionV331_ =
+              null;
+
+            const connexionReelle =
+              await testerConnexionReelleV331_();
+
+            if (
+              connexionReelle
+            ) {
+              actualiserEtatConnexionV331_(
+                true
+              );
+
+              return;
+            }
+
+            const secondeVerification =
+              await confirmerAbsenceConnexionV331_();
+
+            if (
+              secondeVerification
+            ) {
+              actualiserEtatConnexionV331_(
+                true
+              );
+
+              return;
+            }
+
+            actualiserEtatConnexionV331_(
+              false
+            );
+
+            afficherModeHorsConnexionV33_();
+          },
+          DELAI_CONFIRMATION_HORS_LIGNE_V331_
+        );
     }
 
 
-    function gererRetourConnexionV33_() {
-      actualiserEtatConnexion();
+    async function gererRetourConnexionV331_() {
+      if (
+        minuteurPerteConnexionV331_
+      ) {
+        clearTimeout(
+          minuteurPerteConnexionV331_
+        );
+
+        minuteurPerteConnexionV331_ =
+          null;
+      }
+
+      const connexionReelle =
+        await testerConnexionReelleV331_();
+
+      if (
+        !connexionReelle
+      ) {
+        programmerVerificationPerteConnexionV331_();
+        return;
+      }
+
+      actualiserEtatConnexionV331_(
+        true
+      );
 
       cadreAppsScriptPret =
         false;
 
       masquerModeHorsConnexionV33_();
 
-      /*
-       * On recharge l'iframe pour repartir de l'état réel du serveur.
-       * Dès le chargement réussi, Apps Script renverra un nouveau
-       * snapshot qui remplacera l'ancien.
-       */
       chargerApplication();
     }
 
 
-    function reessayerConnexionV33_() {
+    async function reessayerConnexionV331_() {
       if (
-        navigator.onLine ===
-          false
+        elements.boutonReessayerHorsConnexion
       ) {
-        alert(
-          "Aucune connexion Internet n'est détectée pour le moment."
+        elements.boutonReessayerHorsConnexion.disabled =
+          true;
+
+        elements.boutonReessayerHorsConnexion.textContent =
+          "⏳ Vérification…";
+      }
+
+      const connexionReelle =
+        await testerConnexionReelleV331_();
+
+      if (
+        connexionReelle
+      ) {
+        actualiserEtatConnexionV331_(
+          true
         );
 
+        cadreAppsScriptPret =
+          false;
+
+        masquerModeHorsConnexionV33_();
+
+        chargerApplication();
+
+      } else {
+        const secondeVerification =
+          await confirmerAbsenceConnexionV331_();
+
+        if (
+          secondeVerification
+        ) {
+          actualiserEtatConnexionV331_(
+            true
+          );
+
+          masquerModeHorsConnexionV33_();
+
+          chargerApplication();
+
+        } else {
+          actualiserEtatConnexionV331_(
+            false
+          );
+
+          afficherModeHorsConnexionV33_();
+        }
+      }
+
+      if (
+        elements.boutonReessayerHorsConnexion
+      ) {
+        elements.boutonReessayerHorsConnexion.disabled =
+          false;
+
+        elements.boutonReessayerHorsConnexion.textContent =
+          "🔄 Réessayer la connexion";
+      }
+    }
+
+
+    async function confirmerAbsenceConnexionV331_() {
+      await attendreV331_(
+        DELAI_SECONDE_TENTATIVE_V331_
+      );
+
+      return testerConnexionReelleV331_();
+    }
+
+
+    async function testerConnexionReelleV331_() {
+      if (
+        verificationConnexionEnCoursV331_
+      ) {
+        /*
+         * Une vérification est déjà en cours.
+         * On attend brièvement puis on reteste proprement.
+         */
+        await attendreV331_(
+          300
+        );
+      }
+
+      verificationConnexionEnCoursV331_ =
+        true;
+
+      try {
+        const config =
+          window.CAPFUN_CONFIG || {};
+
+        const urlAppsScript =
+          String(
+            config.APPS_SCRIPT_URL || ""
+          ).trim();
+
+        if (
+          !urlAppsScript
+        ) {
+          return !!navigator.onLine;
+        }
+
+        const separateur =
+          urlAppsScript.indexOf("?") ===
+            -1
+            ? "?"
+            : "&";
+
+        /*
+         * no-cors :
+         * on ne cherche pas à lire la réponse Apps Script.
+         * On vérifie seulement qu'une vraie requête réseau peut
+         * atteindre le domaine externe. Le service worker GitHub
+         * ne peut donc pas répondre depuis son cache à cette requête.
+         */
+        await fetch(
+          urlAppsScript +
+            separateur +
+            "_campmanager_ping=" +
+            Date.now(),
+          {
+            method:
+              "GET",
+            mode:
+              "no-cors",
+            cache:
+              "no-store",
+            redirect:
+              "follow"
+          }
+        );
+
+        return true;
+
+      } catch (erreur) {
+        return false;
+
+      } finally {
+        verificationConnexionEnCoursV331_ =
+          false;
+      }
+    }
+
+
+    function attendreV331_(
+      millisecondes
+    ) {
+      return new Promise(
+        function(resolve) {
+          setTimeout(
+            resolve,
+            millisecondes
+          );
+        }
+      );
+    }
+
+
+    function actualiserEtatConnexionV331_(
+      connexionReelle
+    ) {
+      if (
+        !elements.etatConnexion
+      ) {
         return;
       }
 
-      gererRetourConnexionV33_();
+      elements.etatConnexion.textContent =
+        connexionReelle
+          ? "🟢 En ligne"
+          : "🟠 Hors connexion";
     }
 
 
@@ -2409,10 +2691,15 @@
         return;
       }
 
+      /*
+       * Affichage indicatif au tout premier rendu.
+       * Le passage réel en mode hors connexion est décidé uniquement
+       * par testerConnexionReelleV331_().
+       */
       elements.etatConnexion.textContent =
         navigator.onLine
           ? "🟢 En ligne"
-          : "🟠 Hors connexion";
+          : "🟡 Vérification réseau…";
     }
   </script>
 </body>
