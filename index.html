@@ -434,7 +434,7 @@
       id="texteSansCacheHorsConnexion"
       style="display:none"
     >
-      <strong>Aucune donnée hors connexion n'est encore enregistrée.</strong>
+      <strong>Aucune sauvegarde de logements n'est encore enregistrée sur cet appareil.</strong>
       <br><br>
       Ouvrez CampManager une fois avec Internet, choisissez votre prénom
       et attendez l'indication « Synchronisé ». La dernière liste sera
@@ -623,7 +623,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.3.1 — Build 2026.08.13<br>
+          Version 3.3.2 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -645,7 +645,7 @@
 
   <script>
     const VERSION =
-      "3.3.1";
+      "3.3.2";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
@@ -664,6 +664,15 @@
 
     const CLE_SNAPSHOT_HORS_CONNEXION =
       "campManagerSnapshotHorsConnexionV33";
+
+    const PREFIXE_SNAPSHOT_UTILISATEUR_V332_ =
+      "campManagerSnapshotUtilisateurV332:";
+
+    /*
+     * Si le prénom principal a disparu mais qu'un snapshot existe,
+     * on pourra le restaurer depuis le snapshot.
+     */
+    restaurerPrenomDepuisSnapshotV332_();
 
     let cadreAppsScriptPret =
       false;
@@ -1278,6 +1287,17 @@
 
         masquerModeHorsConnexionV33_();
 
+        /*
+         * V3.3.2 :
+         * on demande explicitement au cadre Apps Script son dernier
+         * prénom + snapshot. On ne dépend plus d'un unique message
+         * spontané qui pourrait avoir été manqué.
+         */
+        envoyerVersApplication({
+          type:
+            "campmanager-request-offline-state"
+        });
+
         return;
       }
 
@@ -1286,8 +1306,28 @@
           "campmanager-offline-snapshot" &&
         donnees.snapshot
       ) {
-        enregistrerSnapshotHorsConnexionV33_(
-          donnees.snapshot
+        const snapshot =
+          donnees.snapshot;
+
+        /*
+         * Le snapshot devient aussi une source de secours pour le prénom.
+         */
+        if (
+          snapshot.prenom
+        ) {
+          prenomActif =
+            String(
+              snapshot.prenom
+            ).trim();
+
+          localStorage.setItem(
+            CLE_PRENOM_CONTENEUR,
+            prenomActif
+          );
+        }
+
+        enregistrerSnapshotHorsConnexionV332_(
+          snapshot
         );
 
         return;
@@ -1416,6 +1456,15 @@
           CLE_PRENOM_CONTENEUR,
           prenomActif
         );
+
+        /*
+         * Dès que le prénom est connu, on demande une copie complète
+         * de l'état. Cela rend le cache hors ligne auto-réparant.
+         */
+        envoyerVersApplication({
+          type:
+            "campmanager-request-offline-state"
+        });
 
         associerOneSignalAuPrenom();
 
@@ -1940,16 +1989,85 @@
      * ========================================================
      */
 
-    function enregistrerSnapshotHorsConnexionV33_(
+    function cleSnapshotUtilisateurV332_(
+      prenom
+    ) {
+      const cle =
+        String(
+          prenom || ""
+        )
+          .trim()
+          .toLocaleLowerCase("fr")
+          .normalize("NFD")
+          .replace(
+            /[\u0300-\u036f]/g,
+            ""
+          )
+          .replace(
+            /[^a-z0-9]+/g,
+            "_"
+          )
+          .replace(
+            /^_+|_+$/g,
+            ""
+          );
+
+      return (
+        PREFIXE_SNAPSHOT_UTILISATEUR_V332_ +
+        cle
+      );
+    }
+
+
+    function enregistrerSnapshotHorsConnexionV332_(
       snapshot
     ) {
       try {
-        localStorage.setItem(
-          CLE_SNAPSHOT_HORS_CONNEXION,
+        if (
+          !snapshot ||
+          !Array.isArray(
+            snapshot.logements
+          )
+        ) {
+          return;
+        }
+
+        const texte =
           JSON.stringify(
             snapshot
-          )
+          );
+
+        /*
+         * Copie générale : permet de retrouver le dernier utilisateur
+         * même si sa clé prénom principale est absente.
+         */
+        localStorage.setItem(
+          CLE_SNAPSHOT_HORS_CONNEXION,
+          texte
         );
+
+        /*
+         * Copie par prénom : évite qu'un changement temporaire
+         * d'utilisateur n'écrase la sauvegarde d'une autre personne.
+         */
+        if (
+          snapshot.prenom
+        ) {
+          localStorage.setItem(
+            cleSnapshotUtilisateurV332_(
+              snapshot.prenom
+            ),
+            texte
+          );
+
+          localStorage.setItem(
+            CLE_PRENOM_CONTENEUR,
+            String(
+              snapshot.prenom
+            ).trim()
+          );
+        }
+
       } catch (erreur) {
         console.warn(
           "Snapshot hors connexion impossible à enregistrer :",
@@ -1961,10 +2079,34 @@
 
     function lireSnapshotHorsConnexionV33_() {
       try {
-        const brut =
-          localStorage.getItem(
-            CLE_SNAPSHOT_HORS_CONNEXION
-          );
+        let brut =
+          "";
+
+        /*
+         * Si un prénom est connu, sa sauvegarde dédiée est prioritaire.
+         */
+        if (
+          prenomActif
+        ) {
+          brut =
+            localStorage.getItem(
+              cleSnapshotUtilisateurV332_(
+                prenomActif
+              )
+            ) || "";
+        }
+
+        /*
+         * Sinon on retombe sur la dernière sauvegarde générale.
+         */
+        if (
+          !brut
+        ) {
+          brut =
+            localStorage.getItem(
+              CLE_SNAPSHOT_HORS_CONNEXION
+            ) || "";
+        }
 
         if (
           !brut
@@ -1986,10 +2128,75 @@
           return null;
         }
 
+        /*
+         * Auto-réparation du prénom.
+         */
+        if (
+          !prenomActif &&
+          snapshot.prenom
+        ) {
+          prenomActif =
+            String(
+              snapshot.prenom
+            ).trim();
+
+          localStorage.setItem(
+            CLE_PRENOM_CONTENEUR,
+            prenomActif
+          );
+        }
+
         return snapshot;
 
       } catch (erreur) {
         return null;
+      }
+    }
+
+
+    function restaurerPrenomDepuisSnapshotV332_() {
+      try {
+        const prenomExistant =
+          localStorage.getItem(
+            CLE_PRENOM_CONTENEUR
+          );
+
+        if (
+          prenomExistant
+        ) {
+          return;
+        }
+
+        const brut =
+          localStorage.getItem(
+            CLE_SNAPSHOT_HORS_CONNEXION
+          );
+
+        if (
+          !brut
+        ) {
+          return;
+        }
+
+        const snapshot =
+          JSON.parse(
+            brut
+          );
+
+        if (
+          snapshot &&
+          snapshot.prenom
+        ) {
+          localStorage.setItem(
+            CLE_PRENOM_CONTENEUR,
+            String(
+              snapshot.prenom
+            ).trim()
+          );
+        }
+
+      } catch (erreur) {
+        // Auto-réparation facultative : ne jamais bloquer l'app.
       }
     }
 
