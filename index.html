@@ -735,7 +735,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.3.3 — Build 2026.08.13<br>
+          Version 3.3.4 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -757,7 +757,7 @@
 
   <script>
     const VERSION =
-      "3.3.3";
+      "3.3.4";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
@@ -833,6 +833,19 @@
 
     let prenomActif =
       lirePrenomLocalV333_();
+
+    /*
+     * V3.3.4 :
+     * le prénom enregistré par GitHub est la source de vérité.
+     * Une iframe Apps Script ancienne n'a plus le droit de le remplacer.
+     */
+    let changementPrenomEnCoursV334_ =
+      false;
+
+    let prenomAutoritaireV334_ =
+      String(
+        prenomActif || ""
+      ).trim();
 
     function boolLocalStorage(
       cle,
@@ -1056,6 +1069,33 @@
      * ========================================================
      */
 
+    function normaliserPrenomV334_(
+      valeur
+    ) {
+      return String(
+        valeur || ""
+      )
+        .trim()
+        .toLocaleLowerCase("fr")
+        .normalize("NFD")
+        .replace(
+          /[\u0300-\u036f]/g,
+          ""
+        );
+    }
+
+
+    function prenomsIdentiquesV334_(
+      a,
+      b
+    ) {
+      return (
+        normaliserPrenomV334_(a) ===
+        normaliserPrenomV334_(b)
+      );
+    }
+
+
     function lireCookieV333_(
       nom
     ) {
@@ -1173,6 +1213,9 @@
         return;
       }
 
+      prenomAutoritaireV334_ =
+        valeur;
+
       try {
         localStorage.setItem(
           CLE_PRENOM_LOCAL_V333_,
@@ -1222,6 +1265,11 @@
     async function demarrerCampManagerV333_() {
       prenomActif =
         lirePrenomLocalV333_();
+
+      prenomAutoritaireV334_ =
+        String(
+          prenomActif || ""
+        ).trim();
 
       /*
        * VRAI hors connexion :
@@ -1421,6 +1469,9 @@
        */
       prenomActif =
         prenom;
+
+      prenomAutoritaireV334_ =
+        prenomActif;
 
       sauvegarderPrenomLocalV333_(
         prenomActif
@@ -1691,12 +1742,26 @@
             reponse.data,
             {
               version:
-                "3.3.3",
+                "3.3.4",
               enregistreLe:
                 reponse.data.synchroniseLe ||
                 new Date().toISOString()
             }
           );
+
+        /*
+         * Une requête lancée pour l'ancien prénom peut se terminer
+         * après le changement. Elle n'est alors plus autorisée à écrire.
+         */
+        if (
+          prenomAutoritaireV334_ &&
+          !prenomsIdentiquesV334_(
+            valeur,
+            prenomAutoritaireV334_
+          )
+        ) {
+          return false;
+        }
 
         enregistrerSnapshotHorsConnexionV332_(
           snapshot
@@ -1939,10 +2004,8 @@
       elements.iframe.src =
         src;
 
-      elements.iframe.addEventListener(
-        "load",
-        envoyerPreferencesVersApplication
-      );
+      elements.iframe.onload =
+        envoyerPreferencesVersApplication;
 
       /*
        * Si GitHub Pages est chargé depuis son cache mais qu'Apps Script
@@ -2205,6 +2268,13 @@
         cadreAppsScriptPret =
           true;
 
+        if (
+          prenomAutoritaireV334_
+        ) {
+          changementPrenomEnCoursV334_ =
+            false;
+        }
+
         actualiserEtatConnexionV331_(
           true
         );
@@ -2263,16 +2333,38 @@
         const snapshot =
           donnees.snapshot;
 
+        const prenomSnapshot =
+          String(
+            snapshot.prenom || ""
+          ).trim();
+
         /*
-         * Le snapshot devient aussi une source de secours pour le prénom.
+         * Si ce snapshot vient encore de l'ancien utilisateur,
+         * il est ignoré intégralement.
          */
         if (
-          snapshot.prenom
+          prenomAutoritaireV334_ &&
+          prenomSnapshot &&
+          !prenomsIdentiquesV334_(
+            prenomSnapshot,
+            prenomAutoritaireV334_
+          )
+        ) {
+          console.warn(
+            "Snapshot ancien utilisateur ignoré :",
+            prenomSnapshot
+          );
+
+          return;
+        }
+
+        if (
+          prenomSnapshot &&
+          !prenomAutoritaireV334_ &&
+          !changementPrenomEnCoursV334_
         ) {
           prenomActif =
-            String(
-              snapshot.prenom
-            ).trim();
+            prenomSnapshot;
 
           sauvegarderPrenomLocalV333_(
             prenomActif
@@ -2400,20 +2492,54 @@
           "capfun-prenom" &&
         donnees.prenom
       ) {
-        prenomActif =
+        const prenomIframe =
           String(
             donnees.prenom
           ).trim();
 
-        localStorage.setItem(
-          CLE_PRENOM_CONTENEUR,
-          prenomActif
-        );
-
         /*
-         * Dès que le prénom est connu, on demande une copie complète
-         * de l'état. Cela rend le cache hors ligne auto-réparant.
+         * RÈGLE V3.3.4 :
+         * GitHub est propriétaire du prénom.
          */
+        if (
+          prenomAutoritaireV334_
+        ) {
+          if (
+            !prenomsIdentiquesV334_(
+              prenomIframe,
+              prenomAutoritaireV334_
+            )
+          ) {
+            console.warn(
+              "Ancien prénom iframe ignoré :",
+              prenomIframe
+            );
+
+            return;
+          }
+
+          prenomActif =
+            prenomAutoritaireV334_;
+
+        } else if (
+          !changementPrenomEnCoursV334_
+        ) {
+          /*
+           * Compatibilité premier démarrage ancien :
+           * Apps Script peut initialiser le prénom uniquement
+           * si GitHub n'en possède encore aucun.
+           */
+          prenomActif =
+            prenomIframe;
+
+          sauvegarderPrenomLocalV333_(
+            prenomActif
+          );
+
+        } else {
+          return;
+        }
+
         envoyerVersApplication({
           type:
             "campmanager-request-offline-state"
@@ -2752,7 +2878,41 @@
     function changerPrenom() {
       fermerReglages();
 
+      /*
+       * V3.3.4 :
+       * l'ancienne iframe est immédiatement neutralisée.
+       * Elle ne peut donc plus renvoyer l'ancien utilisateur après le choix.
+       */
+      changementPrenomEnCoursV334_ =
+        true;
+
+      prenomAutoritaireV334_ =
+        "";
+
+      if (
+        elements.iframe
+      ) {
+        elements.iframe.onload =
+          null;
+
+        elements.iframe.src =
+          "about:blank";
+
+        elements.iframe.style.display =
+          "none";
+      }
+
       effacerPrenomLocalV333_();
+
+      /*
+       * La copie générale correspond encore à l'ancien utilisateur.
+       * Elle ne doit pas pouvoir restaurer son prénom pendant le changement.
+       */
+      try {
+        localStorage.removeItem(
+          CLE_SNAPSHOT_HORS_CONNEXION
+        );
+      } catch (erreur) {}
 
       prenomActif =
         "";
