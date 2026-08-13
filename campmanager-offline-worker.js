@@ -1,6 +1,6 @@
 /*
  * ============================================================
- * CAMPMANAGER V3.3.4 — CACHE HORS CONNEXION
+ * CAMPMANAGER V3.3.5 — CACHE HORS CONNEXION
  * ============================================================
  *
  * Ce fichier est importé par OneSignalSDKWorker.js.
@@ -11,7 +11,7 @@
  */
 
 const CACHE_CAMPMANAGER_V33 =
-  "campmanager-shell-v3.3.4";
+  "campmanager-shell-v3.3.5";
 
 const CHEMIN_CAMPMANAGER =
   "/capfun-menage-mobile/";

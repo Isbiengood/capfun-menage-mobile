@@ -735,7 +735,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.3.4 — Build 2026.08.13<br>
+          Version 3.3.5 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -757,7 +757,7 @@
 
   <script>
     const VERSION =
-      "3.3.4";
+      "3.3.5";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
@@ -776,6 +776,24 @@
 
     const COOKIE_PRENOM_LOCAL_V333_ =
       "campManagerPrenomLocalV333";
+
+    /*
+     * V3.3.5 — SOURCE UNIQUE DU PRÉNOM
+     *
+     * À partir de cette version, le démarrage ne lit PLUS :
+     * - campManagerPrenom (ancienne clé)
+     * - campManagerPrenomLocalV333 (ancienne clé)
+     * - ancien cookie V3.3.3
+     * - prénom contenu dans un snapshot
+     * - prénom envoyé par une ancienne iframe
+     *
+     * Une seule fiche locale GitHub est autorisée.
+     */
+    const CLE_PROFIL_LOCAL_V335_ =
+      "campManagerProfilLocalV335";
+
+    const COOKIE_PROFIL_LOCAL_V335_ =
+      "campManagerProfilLocalV335";
 
     const CLE_ASSISTANT_TERMINE =
       "campManagerAssistantTermine";
@@ -832,7 +850,7 @@
       false;
 
     let prenomActif =
-      lirePrenomLocalV333_();
+      lirePrenomProfilLocalV335_();
 
     /*
      * V3.3.4 :
@@ -1069,6 +1087,218 @@
      * ========================================================
      */
 
+    /**
+     * ========================================================
+     * V3.3.5 — PROFIL LOCAL UNIQUE
+     * ========================================================
+     */
+
+    function lireProfilLocalV335_() {
+      /*
+       * 1. Source principale : localStorage GitHub.
+       */
+      try {
+        const brut =
+          localStorage.getItem(
+            CLE_PROFIL_LOCAL_V335_
+          );
+
+        if (
+          brut
+        ) {
+          const profil =
+            JSON.parse(
+              brut
+            );
+
+          const prenom =
+            String(
+              profil &&
+              profil.prenom
+                ? profil.prenom
+                : ""
+            ).trim();
+
+          if (
+            prenom
+          ) {
+            return {
+              prenom:
+                prenom,
+              modifieLe:
+                profil.modifieLe || ""
+            };
+          }
+        }
+      } catch (erreur) {}
+
+      /*
+       * 2. Seul secours autorisé : cookie V3.3.5.
+       * Aucun ancien stockage n'est consulté.
+       */
+      try {
+        const cookie =
+          lireCookieV333_(
+            COOKIE_PROFIL_LOCAL_V335_
+          );
+
+        if (
+          cookie
+        ) {
+          const profil =
+            JSON.parse(
+              cookie
+            );
+
+          const prenom =
+            String(
+              profil &&
+              profil.prenom
+                ? profil.prenom
+                : ""
+            ).trim();
+
+          if (
+            prenom
+          ) {
+            /*
+             * Auto-répare localStorage depuis le cookie V3.3.5.
+             */
+            enregistrerProfilLocalV335_(
+              prenom
+            );
+
+            return {
+              prenom:
+                prenom,
+              modifieLe:
+                profil.modifieLe || ""
+            };
+          }
+        }
+      } catch (erreur) {}
+
+      return null;
+    }
+
+
+    function lirePrenomProfilLocalV335_() {
+      const profil =
+        lireProfilLocalV335_();
+
+      return profil
+        ? profil.prenom
+        : "";
+    }
+
+
+    function enregistrerProfilLocalV335_(
+      prenom
+    ) {
+      const valeur =
+        String(
+          prenom || ""
+        ).trim();
+
+      if (
+        !valeur
+      ) {
+        return false;
+      }
+
+      const profil = {
+        prenom:
+          valeur,
+        modifieLe:
+          new Date().toISOString(),
+        version:
+          "3.3.5"
+      };
+
+      let localOk =
+        false;
+
+      try {
+        localStorage.setItem(
+          CLE_PROFIL_LOCAL_V335_,
+          JSON.stringify(
+            profil
+          )
+        );
+
+        localOk =
+          true;
+      } catch (erreur) {}
+
+      /*
+       * Deuxième copie indépendante, mais TOUJOURS V3.3.5.
+       */
+      try {
+        document.cookie =
+          COOKIE_PROFIL_LOCAL_V335_ +
+          "=" +
+          encodeURIComponent(
+            JSON.stringify(
+              profil
+            )
+          ) +
+          "; Max-Age=31536000; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
+      } catch (erreur) {}
+
+      /*
+       * Met à jour les variables de session.
+       */
+      prenomActif =
+        valeur;
+
+      prenomAutoritaireV334_ =
+        valeur;
+
+      return localOk;
+    }
+
+
+    function effacerProfilLocalV335_() {
+      try {
+        localStorage.removeItem(
+          CLE_PROFIL_LOCAL_V335_
+        );
+      } catch (erreur) {}
+
+      try {
+        document.cookie =
+          COOKIE_PROFIL_LOCAL_V335_ +
+          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
+      } catch (erreur) {}
+    }
+
+
+    function purgerAnciennesSourcesPrenomV335_() {
+      /*
+       * Important :
+       * on SUPPRIME les anciennes sources afin qu'elles ne puissent
+       * plus ressusciter un prénom précédent.
+       *
+       * Cette purge n'affecte pas le nouveau profil V3.3.5.
+       */
+      try {
+        localStorage.removeItem(
+          CLE_PRENOM_LOCAL_V333_
+        );
+
+        localStorage.removeItem(
+          CLE_PRENOM_CONTENEUR
+        );
+      } catch (erreur) {}
+
+      try {
+        document.cookie =
+          COOKIE_PRENOM_LOCAL_V333_ +
+          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
+      } catch (erreur) {}
+    }
+
+
     function normaliserPrenomV334_(
       valeur
     ) {
@@ -1188,7 +1418,7 @@
         if (
           prenom
         ) {
-          sauvegarderPrenomLocalV333_(
+          enregistrerProfilLocalV335_(
             prenom
           );
         }
@@ -1263,13 +1493,23 @@
 
 
     async function demarrerCampManagerV333_() {
+      /*
+       * V3.3.5 :
+       * UNE SEULE SOURCE au redémarrage.
+       */
       prenomActif =
-        lirePrenomLocalV333_();
+        lirePrenomProfilLocalV335_();
 
       prenomAutoritaireV334_ =
         String(
           prenomActif || ""
         ).trim();
+
+      /*
+       * Une fois le nouveau profil lu, on détruit définitivement
+       * les anciennes clés/cookies de prénom.
+       */
+      purgerAnciennesSourcesPrenomV335_();
 
       /*
        * VRAI hors connexion :
@@ -1311,7 +1551,7 @@
         return;
       }
 
-      sauvegarderPrenomLocalV333_(
+      enregistrerProfilLocalV335_(
         prenomActif
       );
 
@@ -1473,15 +1713,23 @@
       prenomAutoritaireV334_ =
         prenomActif;
 
-      sauvegarderPrenomLocalV333_(
-        prenomActif
-      );
+      const profilEnregistre =
+        enregistrerProfilLocalV335_(
+          prenomActif
+        );
+
+      /*
+       * Élimine immédiatement les anciens stockages.
+       */
+      purgerAnciennesSourcesPrenomV335_();
 
       elements.confirmerPrenomLocal.disabled =
         true;
 
       elements.messagePrenomLocal.textContent =
-        "✅ Prénom mémorisé sur ce téléphone.";
+        profilEnregistre
+          ? "✅ Prénom mémorisé sur ce téléphone."
+          : "⚠️ Le téléphone refuse le stockage local. Vérifiez les réglages du navigateur.";
 
       /*
        * Création immédiate du snapshot hors connexion.
@@ -1767,11 +2015,10 @@
           snapshot
         );
 
-        sauvegarderPrenomLocalV333_(
-          snapshot.prenom ||
-          valeur
-        );
-
+        /*
+         * Un snapshot ne décide JAMAIS du prénom en V3.3.5.
+         * Il est simplement associé au profil déjà choisi.
+         */
         return true;
 
       } catch (erreur) {
@@ -2358,19 +2605,10 @@
           return;
         }
 
-        if (
-          prenomSnapshot &&
-          !prenomAutoritaireV334_ &&
-          !changementPrenomEnCoursV334_
-        ) {
-          prenomActif =
-            prenomSnapshot;
-
-          sauvegarderPrenomLocalV333_(
-            prenomActif
-          );
-        }
-
+        /*
+         * V3.3.5 :
+         * un snapshot n'est JAMAIS une source de prénom.
+         */
         enregistrerSnapshotHorsConnexionV332_(
           snapshot
         );
@@ -2498,47 +2736,27 @@
           ).trim();
 
         /*
-         * RÈGLE V3.3.4 :
-         * GitHub est propriétaire du prénom.
+         * V3.3.5 :
+         * Apps Script n'est PLUS JAMAIS une source de prénom.
+         * Il peut seulement confirmer le profil déjà choisi par GitHub.
          */
         if (
-          prenomAutoritaireV334_
+          !prenomAutoritaireV334_ ||
+          !prenomsIdentiquesV334_(
+            prenomIframe,
+            prenomAutoritaireV334_
+          )
         ) {
-          if (
-            !prenomsIdentiquesV334_(
-              prenomIframe,
-              prenomAutoritaireV334_
-            )
-          ) {
-            console.warn(
-              "Ancien prénom iframe ignoré :",
-              prenomIframe
-            );
-
-            return;
-          }
-
-          prenomActif =
-            prenomAutoritaireV334_;
-
-        } else if (
-          !changementPrenomEnCoursV334_
-        ) {
-          /*
-           * Compatibilité premier démarrage ancien :
-           * Apps Script peut initialiser le prénom uniquement
-           * si GitHub n'en possède encore aucun.
-           */
-          prenomActif =
-            prenomIframe;
-
-          sauvegarderPrenomLocalV333_(
-            prenomActif
+          console.warn(
+            "Prénom iframe ignoré :",
+            prenomIframe
           );
 
-        } else {
           return;
         }
+
+        prenomActif =
+          prenomAutoritaireV334_;
 
         envoyerVersApplication({
           type:
@@ -2902,7 +3120,15 @@
           "none";
       }
 
-      effacerPrenomLocalV333_();
+      /*
+       * Efface la SEULE fiche prénom autorisée.
+       */
+      effacerProfilLocalV335_();
+
+      /*
+       * Supprime aussi tous les anciens mécanismes une dernière fois.
+       */
+      purgerAnciennesSourcesPrenomV335_();
 
       /*
        * La copie générale correspond encore à l'ancien utilisateur.
@@ -2953,6 +3179,9 @@
       ) {
         return;
       }
+
+      effacerProfilLocalV335_();
+      purgerAnciennesSourcesPrenomV335_();
 
       window.OneSignalDeferred =
         window.OneSignalDeferred || [];
@@ -3173,7 +3402,7 @@
             texte
           );
 
-          sauvegarderPrenomLocalV333_(
+          enregistrerProfilLocalV335_(
             String(
               snapshot.prenom
             ).trim()
@@ -3252,7 +3481,7 @@
               snapshot.prenom
             ).trim();
 
-          sauvegarderPrenomLocalV333_(
+          enregistrerProfilLocalV335_(
             prenomActif
           );
         }
@@ -3298,7 +3527,7 @@
           snapshot &&
           snapshot.prenom
         ) {
-          sauvegarderPrenomLocalV333_(
+          enregistrerProfilLocalV335_(
             String(
               snapshot.prenom
             ).trim()
