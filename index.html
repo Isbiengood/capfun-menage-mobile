@@ -218,6 +218,162 @@
       background: var(--bordure);
     }
 
+    /* ======================================================
+     * CAMPMANAGER V3.3 — MODE HORS CONNEXION
+     * ====================================================== */
+
+    #ecranHorsConnexion {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      display: none;
+      overflow: auto;
+      padding:
+        max(18px, env(safe-area-inset-top))
+        14px
+        max(24px, env(safe-area-inset-bottom));
+      background: var(--fond);
+      color: var(--texte);
+    }
+
+    #ecranHorsConnexion.visible {
+      display: block;
+    }
+
+    .offline-entete {
+      max-width: 760px;
+      margin: 0 auto 14px;
+      padding: 17px;
+      border-radius: 18px;
+      background: #fff2cc;
+      color: #5f4b00;
+      box-shadow: 0 4px 16px rgba(0,0,0,.10);
+    }
+
+    body.sombre .offline-entete {
+      background: #4b3d00;
+      color: #fff3bf;
+    }
+
+    .offline-entete h1 {
+      margin: 0 0 7px;
+      font-size: 23px;
+    }
+
+    .offline-entete p {
+      margin: 5px 0;
+      line-height: 1.4;
+    }
+
+    .offline-lecture-seule {
+      font-weight: 850;
+    }
+
+    .offline-meta,
+    .offline-zone {
+      max-width: 760px;
+      margin: 0 auto 14px;
+      padding: 15px;
+      border: 1px solid var(--bordure);
+      border-radius: 17px;
+      background: var(--carte);
+    }
+
+    .offline-meta {
+      display: grid;
+      gap: 5px;
+    }
+
+    .offline-zone h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      color: var(--bleu);
+    }
+
+    body.sombre .offline-zone h2 {
+      color: #d6e6ff;
+    }
+
+    .offline-carte {
+      margin: 10px 0;
+      overflow: hidden;
+      border: 1px solid var(--bordure);
+      border-radius: 16px;
+      background: var(--carte);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .offline-carte-bandeau {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: #e8eef7;
+      color: #17365d;
+      font-weight: 900;
+    }
+
+    body.sombre .offline-carte-bandeau {
+      background: #26354a;
+      color: #e8f1ff;
+    }
+
+    .offline-numero {
+      font-size: 24px;
+    }
+
+    .offline-carte-contenu {
+      padding: 13px 14px;
+      line-height: 1.5;
+    }
+
+    .offline-carte-contenu p {
+      margin: 4px 0;
+    }
+
+    .offline-priorite-attente {
+      border: 3px solid #f6a800;
+    }
+
+    .offline-priorite-rouge {
+      border: 3px solid #c62828;
+    }
+
+    .offline-priorite-violet {
+      border: 3px solid #7e57c2;
+    }
+
+    .offline-vide {
+      padding: 24px 12px;
+      text-align: center;
+      color: var(--secondaire);
+    }
+
+    #boutonReessayerHorsConnexion {
+      display: block;
+      width: min(760px, 100%);
+      min-height: 52px;
+      margin: 16px auto;
+      border: 0;
+      border-radius: 14px;
+      background: #17365d;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 850;
+    }
+
+    #texteSansCacheHorsConnexion {
+      max-width: 760px;
+      margin: 30px auto;
+      padding: 22px;
+      border-radius: 18px;
+      background: var(--carte);
+      border: 1px solid var(--bordure);
+      text-align: center;
+      line-height: 1.55;
+    }
+
     #erreurConfiguration {
       display: none;
       padding: 25px;
@@ -235,6 +391,63 @@
     title="CampManager Mobile"
     allow="clipboard-write"
   ></iframe>
+
+
+  <!-- CAMPMANAGER V3.3 — MODE HORS CONNEXION -->
+  <section
+    id="ecranHorsConnexion"
+    aria-live="polite"
+  >
+    <div class="offline-entete">
+      <h1>📴 Mode hors connexion</h1>
+      <p class="offline-lecture-seule">
+        Consultation uniquement — aucune validation n'est enregistrée hors ligne.
+      </p>
+      <p id="offlineDerniereSynchro">
+        Dernière synchronisation : —
+      </p>
+    </div>
+
+    <div
+      id="offlineMeta"
+      class="offline-meta"
+    ></div>
+
+    <div
+      id="offlineControles"
+      class="offline-zone"
+      style="display:none"
+    >
+      <h2>📋 Contrôles à venir</h2>
+      <div id="offlineListeControles"></div>
+    </div>
+
+    <div
+      id="offlineLogements"
+      class="offline-zone"
+    >
+      <h2>🏠 Mes logements</h2>
+      <div id="offlineListeLogements"></div>
+    </div>
+
+    <div
+      id="texteSansCacheHorsConnexion"
+      style="display:none"
+    >
+      <strong>Aucune donnée hors connexion n'est encore enregistrée.</strong>
+      <br><br>
+      Ouvrez CampManager une fois avec Internet, choisissez votre prénom
+      et attendez l'indication « Synchronisé ». La dernière liste sera
+      ensuite disponible sans réseau.
+    </div>
+
+    <button
+      id="boutonReessayerHorsConnexion"
+      type="button"
+    >
+      🔄 Réessayer la connexion
+    </button>
+  </section>
 
   <!-- Premier lancement -->
   <div
@@ -410,7 +623,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.2.1 — Build 2026.08.11<br>
+          Version 3.3.0 — Build 2026.08.13<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -432,7 +645,7 @@
 
   <script>
     const VERSION =
-      "3.2.1";
+      "3.3.0";
 
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
@@ -448,6 +661,18 @@
 
     const CLE_SOMBRE =
       "campManagerModeSombre";
+
+    const CLE_SNAPSHOT_HORS_CONNEXION =
+      "campManagerSnapshotHorsConnexionV33";
+
+    let cadreAppsScriptPret =
+      false;
+
+    let minuteurVerificationCadre =
+      null;
+
+    let modeHorsConnexionAffiche =
+      false;
 
     let oneSignalPret =
       false;
@@ -576,6 +801,51 @@
             "etatConnexion"
           );
 
+        elements.ecranHorsConnexion =
+          document.getElementById(
+            "ecranHorsConnexion"
+          );
+
+        elements.offlineDerniereSynchro =
+          document.getElementById(
+            "offlineDerniereSynchro"
+          );
+
+        elements.offlineMeta =
+          document.getElementById(
+            "offlineMeta"
+          );
+
+        elements.offlineControles =
+          document.getElementById(
+            "offlineControles"
+          );
+
+        elements.offlineListeControles =
+          document.getElementById(
+            "offlineListeControles"
+          );
+
+        elements.offlineLogements =
+          document.getElementById(
+            "offlineLogements"
+          );
+
+        elements.offlineListeLogements =
+          document.getElementById(
+            "offlineListeLogements"
+          );
+
+        elements.texteSansCacheHorsConnexion =
+          document.getElementById(
+            "texteSansCacheHorsConnexion"
+          );
+
+        elements.boutonReessayerHorsConnexion =
+          document.getElementById(
+            "boutonReessayerHorsConnexion"
+          );
+
         appliquerModeSombre();
         configurerOptionsAppareil();
         brancherEvenements();
@@ -584,15 +854,32 @@
 
         window.addEventListener(
           "online",
-          actualiserEtatConnexion
+          gererRetourConnexionV33_
         );
 
         window.addEventListener(
           "offline",
-          actualiserEtatConnexion
+          gererPerteConnexionV33_
         );
 
+        if (
+          elements.boutonReessayerHorsConnexion
+        ) {
+          elements.boutonReessayerHorsConnexion
+            .addEventListener(
+              "click",
+              reessayerConnexionV33_
+            );
+        }
+
         actualiserEtatConnexion();
+
+        if (
+          navigator.onLine ===
+            false
+        ) {
+          gererPerteConnexionV33_();
+        }
       }
     );
 
@@ -692,6 +979,9 @@
           );
       }
 
+      cadreAppsScriptPret =
+        false;
+
       elements.iframe.src =
         src;
 
@@ -699,6 +989,35 @@
         "load",
         envoyerPreferencesVersApplication
       );
+
+      /*
+       * Si GitHub Pages est chargé depuis son cache mais qu'Apps Script
+       * n'est réellement pas joignable, l'iframe ne pourra pas envoyer
+       * son message « frame-ready ». On bascule alors sur la dernière
+       * photo locale.
+       *
+       * 20 secondes laissent de la marge aux démarrages Apps Script
+       * parfois plus lents sur téléphone.
+       */
+      if (
+        minuteurVerificationCadre
+      ) {
+        clearTimeout(
+          minuteurVerificationCadre
+        );
+      }
+
+      minuteurVerificationCadre =
+        setTimeout(
+          function() {
+            if (
+              !cadreAppsScriptPret
+            ) {
+              afficherModeHorsConnexionV33_();
+            }
+          },
+          20000
+        );
     }
 
 
@@ -876,6 +1195,45 @@
     ) {
       const donnees =
         evenement.data || {};
+
+      if (
+        donnees.type ===
+          "campmanager-frame-ready"
+      ) {
+        cadreAppsScriptPret =
+          true;
+
+        if (
+          minuteurVerificationCadre
+        ) {
+          clearTimeout(
+            minuteurVerificationCadre
+          );
+
+          minuteurVerificationCadre =
+            null;
+        }
+
+        if (
+          navigator.onLine
+        ) {
+          masquerModeHorsConnexionV33_();
+        }
+
+        return;
+      }
+
+      if (
+        donnees.type ===
+          "campmanager-offline-snapshot" &&
+        donnees.snapshot
+      ) {
+        enregistrerSnapshotHorsConnexionV33_(
+          donnees.snapshot
+        );
+
+        return;
+      }
 
       if (
         donnees.type ===
@@ -1400,7 +1758,8 @@
         CLE_ASSISTANT_TERMINE,
         CLE_VIBRATIONS,
         CLE_SON,
-        CLE_SOMBRE
+        CLE_SOMBRE,
+        CLE_SNAPSHOT_HORS_CONNEXION
       ].forEach(
         function(cle) {
           localStorage.removeItem(
@@ -1514,6 +1873,532 @@
         donnees,
         "*"
       );
+    }
+
+
+    /**
+     * ========================================================
+     * CAMPMANAGER V3.3 — HORS CONNEXION
+     * ========================================================
+     */
+
+    function enregistrerSnapshotHorsConnexionV33_(
+      snapshot
+    ) {
+      try {
+        localStorage.setItem(
+          CLE_SNAPSHOT_HORS_CONNEXION,
+          JSON.stringify(
+            snapshot
+          )
+        );
+      } catch (erreur) {
+        console.warn(
+          "Snapshot hors connexion impossible à enregistrer :",
+          erreur
+        );
+      }
+    }
+
+
+    function lireSnapshotHorsConnexionV33_() {
+      try {
+        const brut =
+          localStorage.getItem(
+            CLE_SNAPSHOT_HORS_CONNEXION
+          );
+
+        if (
+          !brut
+        ) {
+          return null;
+        }
+
+        const snapshot =
+          JSON.parse(
+            brut
+          );
+
+        if (
+          !snapshot ||
+          !Array.isArray(
+            snapshot.logements
+          )
+        ) {
+          return null;
+        }
+
+        return snapshot;
+
+      } catch (erreur) {
+        return null;
+      }
+    }
+
+
+    function gererPerteConnexionV33_() {
+      actualiserEtatConnexion();
+      afficherModeHorsConnexionV33_();
+    }
+
+
+    function gererRetourConnexionV33_() {
+      actualiserEtatConnexion();
+
+      cadreAppsScriptPret =
+        false;
+
+      masquerModeHorsConnexionV33_();
+
+      /*
+       * On recharge l'iframe pour repartir de l'état réel du serveur.
+       * Dès le chargement réussi, Apps Script renverra un nouveau
+       * snapshot qui remplacera l'ancien.
+       */
+      chargerApplication();
+    }
+
+
+    function reessayerConnexionV33_() {
+      if (
+        navigator.onLine ===
+          false
+      ) {
+        alert(
+          "Aucune connexion Internet n'est détectée pour le moment."
+        );
+
+        return;
+      }
+
+      gererRetourConnexionV33_();
+    }
+
+
+    function afficherModeHorsConnexionV33_() {
+      if (
+        !elements.ecranHorsConnexion
+      ) {
+        return;
+      }
+
+      modeHorsConnexionAffiche =
+        true;
+
+      if (
+        elements.iframe
+      ) {
+        elements.iframe.style.display =
+          "none";
+      }
+
+      elements.ecranHorsConnexion.classList.add(
+        "visible"
+      );
+
+      const snapshot =
+        lireSnapshotHorsConnexionV33_();
+
+      afficherSnapshotHorsConnexionV33_(
+        snapshot
+      );
+    }
+
+
+    function masquerModeHorsConnexionV33_() {
+      modeHorsConnexionAffiche =
+        false;
+
+      if (
+        elements.ecranHorsConnexion
+      ) {
+        elements.ecranHorsConnexion.classList.remove(
+          "visible"
+        );
+      }
+
+      if (
+        elements.iframe
+      ) {
+        elements.iframe.style.display =
+          "block";
+      }
+    }
+
+
+    function afficherSnapshotHorsConnexionV33_(
+      snapshot
+    ) {
+      const cacheDisponible =
+        !!snapshot;
+
+      elements.texteSansCacheHorsConnexion.style.display =
+        cacheDisponible
+          ? "none"
+          : "block";
+
+      elements.offlineMeta.style.display =
+        cacheDisponible
+          ? "grid"
+          : "none";
+
+      elements.offlineLogements.style.display =
+        cacheDisponible
+          ? "block"
+          : "none";
+
+      if (
+        !cacheDisponible
+      ) {
+        elements.offlineDerniereSynchro.textContent =
+          "Dernière synchronisation : aucune";
+
+        elements.offlineControles.style.display =
+          "none";
+
+        return;
+      }
+
+      const dateTexte =
+        formaterDateHeureV33_(
+          snapshot.enregistreLe
+        );
+
+      elements.offlineDerniereSynchro.textContent =
+        "Dernière synchronisation : " +
+        (
+          dateTexte ||
+          "inconnue"
+        );
+
+      const role =
+        libelleRoleHorsConnexionV33_(
+          snapshot
+        );
+
+      elements.offlineMeta.innerHTML =
+        "<strong>👤 " +
+        echapperHtmlV33_(
+          snapshot.prenom ||
+          prenomActif ||
+          "Utilisateur"
+        ) +
+        "</strong>" +
+        "<span>" +
+        echapperHtmlV33_(
+          role
+        ) +
+        "</span>";
+
+      afficherControlesHorsConnexionV33_(
+        snapshot.controlesAVenir || []
+      );
+
+      afficherLogementsHorsConnexionV33_(
+        snapshot.logements || []
+      );
+    }
+
+
+    function afficherControlesHorsConnexionV33_(
+      controles
+    ) {
+      if (
+        !Array.isArray(
+          controles
+        ) ||
+        controles.length ===
+          0
+      ) {
+        elements.offlineControles.style.display =
+          "none";
+
+        elements.offlineListeControles.innerHTML =
+          "";
+
+        return;
+      }
+
+      elements.offlineControles.style.display =
+        "block";
+
+      elements.offlineListeControles.innerHTML =
+        "";
+
+      controles.forEach(
+        function(logement) {
+          const carte =
+            document.createElement(
+              "div"
+            );
+
+          carte.className =
+            "offline-carte";
+
+          carte.innerHTML =
+            "<div class='offline-carte-bandeau'>" +
+              "<span class='offline-numero'>" +
+                echapperHtmlV33_(
+                  logement.logement || ""
+                ) +
+              "</span>" +
+              "<span>📋 À venir</span>" +
+            "</div>" +
+            "<div class='offline-carte-contenu'>" +
+              "<p><strong>Ménage en cours</strong></p>" +
+              "<p>Affecté à : " +
+                echapperHtmlV33_(
+                  logement.personnel ||
+                  "Non affecté"
+                ) +
+              "</p>" +
+            "</div>";
+
+          elements.offlineListeControles.appendChild(
+            carte
+          );
+        }
+      );
+    }
+
+
+    function afficherLogementsHorsConnexionV33_(
+      logements
+    ) {
+      elements.offlineListeLogements.innerHTML =
+        "";
+
+      if (
+        !Array.isArray(
+          logements
+        ) ||
+        logements.length ===
+          0
+      ) {
+        elements.offlineListeLogements.innerHTML =
+          "<div class='offline-vide'>" +
+            "✅ Aucun logement à traiter dans la dernière synchronisation." +
+          "</div>";
+
+        return;
+      }
+
+      logements.forEach(
+        function(logement) {
+          const carte =
+            document.createElement(
+              "article"
+            );
+
+          carte.className =
+            "offline-carte " +
+            classePrioriteHorsConnexionV33_(
+              logement.priorite
+            );
+
+          const estControle =
+            logement.mode ===
+              "controle";
+
+          const affectation =
+            estControle
+              ? (
+                  "👑 Contrôle : " +
+                  (
+                    logement.gouvernante ||
+                    snapshotGouvernanteV33_(
+                      logement
+                    ) ||
+                    ""
+                  )
+                )
+              : (
+                  "🧹 Affectation : " +
+                  (
+                    logement.personnel ||
+                    ""
+                  )
+                );
+
+          carte.innerHTML =
+            "<div class='offline-carte-bandeau'>" +
+              "<span class='offline-numero'>" +
+                echapperHtmlV33_(
+                  logement.logement || ""
+                ) +
+              "</span>" +
+              "<span>" +
+                echapperHtmlV33_(
+                  [
+                    logement.priorite,
+                    logement.acces
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                ) +
+              "</span>" +
+            "</div>" +
+            "<div class='offline-carte-contenu'>" +
+              "<p>" +
+                echapperHtmlV33_(
+                  affectation
+                ) +
+              "</p>" +
+              "<p>État : <strong>" +
+                echapperHtmlV33_(
+                  logement.etatMenage || ""
+                ) +
+              "</strong></p>" +
+              "<p style='margin-top:10px;color:var(--secondaire);font-weight:700'>" +
+                "📴 Consultation uniquement" +
+              "</p>" +
+            "</div>";
+
+          elements.offlineListeLogements.appendChild(
+            carte
+          );
+        }
+      );
+    }
+
+
+    function snapshotGouvernanteV33_(
+      logement
+    ) {
+      return String(
+        logement.gouvernante || ""
+      ).trim();
+    }
+
+
+    function classePrioriteHorsConnexionV33_(
+      priorite
+    ) {
+      const valeur =
+        String(
+          priorite || ""
+        );
+
+      if (
+        valeur.indexOf(
+          "⚠"
+        ) !==
+          -1
+      ) {
+        return "offline-priorite-attente";
+      }
+
+      if (
+        valeur.indexOf(
+          "🔴"
+        ) !==
+          -1
+      ) {
+        return "offline-priorite-rouge";
+      }
+
+      if (
+        valeur.indexOf(
+          "🟣"
+        ) !==
+          -1
+      ) {
+        return "offline-priorite-violet";
+      }
+
+      return "";
+    }
+
+
+    function libelleRoleHorsConnexionV33_(
+      snapshot
+    ) {
+      if (
+        snapshot.femmeDeChambre &&
+        snapshot.gouvernante
+      ) {
+        return "🧹 Femme de chambre + 👑 Gouvernante";
+      }
+
+      if (
+        snapshot.gouvernante
+      ) {
+        return "👑 Gouvernante";
+      }
+
+      if (
+        snapshot.femmeDeChambre
+      ) {
+        return "🧹 Femme de chambre";
+      }
+
+      return snapshot.role ||
+        "Personnel";
+    }
+
+
+    function formaterDateHeureV33_(
+      valeur
+    ) {
+      try {
+        const date =
+          new Date(
+            valeur
+          );
+
+        if (
+          isNaN(
+            date.getTime()
+          )
+        ) {
+          return "";
+        }
+
+        return date.toLocaleString(
+          "fr-FR",
+          {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
+      } catch (erreur) {
+        return "";
+      }
+    }
+
+
+    function echapperHtmlV33_(
+      valeur
+    ) {
+      return String(
+        valeur == null
+          ? ""
+          : valeur
+      )
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
+        );
     }
 
 
