@@ -414,7 +414,7 @@
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.2.10 Stable — Patch prénom iPhone<br>
+          Version 3.2.10 — Prénom persistant V2.1.2<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -441,20 +441,6 @@
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
 
-    /*
-     * V3.2.10 STABLE — PATCH PRÉNOM IPHONE
-     *
-     * Le prénom est conservé dans deux stockages first-party
-     * du conteneur GitHub : localStorage + cookie.
-     * Le cookie sert de secours si le localStorage n'est plus
-     * restitué correctement par l'iPhone au prochain lancement.
-     */
-    const COOKIE_PRENOM_CONTENEUR =
-      "campManagerPrenom";
-
-    const DUREE_COOKIE_PRENOM_SECONDES =
-      31536000;
-
     const CLE_ASSISTANT_TERMINE =
       "campManagerAssistantTermine";
 
@@ -470,139 +456,17 @@
     let oneSignalPret =
       false;
 
-
-    /* ========================================================
-     * PRÉNOM PERSISTANT — STOCKAGE RENFORCÉ IPHONE
-     * ======================================================== */
-
-    function lireCookiePrenomCampManager_() {
-      try {
-        const morceaux =
-          String(
-            document.cookie || ""
-          ).split(";");
-
-        const prefixe =
-          COOKIE_PRENOM_CONTENEUR + "=";
-
-        for (
-          let index = 0;
-          index < morceaux.length;
-          index++
-        ) {
-          const morceau =
-            morceaux[index].trim();
-
-          if (
-            morceau.indexOf(prefixe) === 0
-          ) {
-            return decodeURIComponent(
-              morceau.substring(
-                prefixe.length
-              )
-            );
-          }
-        }
-      } catch (erreur) {}
-
-      return "";
-    }
-
-
-    function sauvegarderPrenomPersistantCampManager_(
-      prenom
-    ) {
-      const valeur =
-        String(
-          prenom || ""
-        ).trim();
-
-      if (!valeur) {
-        return;
-      }
-
-      /* Copie 1 : localStorage GitHub. */
-      try {
-        localStorage.setItem(
-          CLE_PRENOM_CONTENEUR,
-          valeur
-        );
-      } catch (erreur) {}
-
-      /* Copie 2 : cookie first-party GitHub, valable 1 an. */
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CONTENEUR +
-          "=" +
-          encodeURIComponent(
-            valeur
-          ) +
-          "; Max-Age=" +
-          DUREE_COOKIE_PRENOM_SECONDES +
-          "; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
-
-    function lirePrenomPersistantCampManager_() {
-      let valeur =
-        "";
-
-      try {
-        valeur =
-          String(
-            localStorage.getItem(
-              CLE_PRENOM_CONTENEUR
-            ) || ""
-          ).trim();
-      } catch (erreur) {}
-
-      if (!valeur) {
-        valeur =
-          String(
-            lireCookiePrenomCampManager_() || ""
-          ).trim();
-      }
-
-      /*
-       * Auto-réparation : si une copie existe,
-       * on recrée l'autre copie immédiatement.
-       */
-      if (valeur) {
-        sauvegarderPrenomPersistantCampManager_(
-          valeur
-        );
-      }
-
-      return valeur;
-    }
-
-
-    function effacerPrenomPersistantCampManager_() {
-      try {
-        localStorage.removeItem(
-          CLE_PRENOM_CONTENEUR
-        );
-      } catch (erreur) {}
-
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CONTENEUR +
-          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
-
     /*
      * ========================================================
      * PRÉNOM PERSISTANT — MÉTHODE V2.1.2 ADAPTÉE
      * ========================================================
      *
      * La V2.1.2 utilisait une URL personnelle ?prenom=...
-     * en plus du stockage local.
+     * en plus du localStorage.
      *
      * Ici le paramètre est lu PAR LA PAGE GITHUB ELLE-MÊME,
      * donc dans le contexte de premier niveau de l'iPhone.
+     * Cela évite de dépendre du postMessage de l'iframe Apps Script.
      */
     let prenomDepuisUrl =
       "";
@@ -620,7 +484,8 @@
       if (
         prenomDepuisUrl
       ) {
-        sauvegarderPrenomPersistantCampManager_(
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
           prenomDepuisUrl
         );
       }
@@ -628,7 +493,9 @@
 
     let prenomActif =
       prenomDepuisUrl ||
-      lirePrenomPersistantCampManager_();
+      localStorage.getItem(
+        CLE_PRENOM_CONTENEUR
+      ) || "";
 
     function boolLocalStorage(
       cle,
@@ -1218,10 +1085,8 @@
           }
         );
 
-        /* Efface localStorage + cookie du prénom. */
-        effacerPrenomPersistantCampManager_();
-
         [
+          CLE_PRENOM_CONTENEUR,
           CLE_ASSISTANT_TERMINE,
           CLE_VIBRATIONS,
           CLE_SON,
@@ -1260,7 +1125,8 @@
             donnees.prenom
           ).trim();
 
-        sauvegarderPrenomPersistantCampManager_(
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
           prenomActif
         );
 
@@ -1597,7 +1463,9 @@
     function changerPrenom() {
       fermerReglages();
 
-      effacerPrenomPersistantCampManager_();
+      localStorage.removeItem(
+        CLE_PRENOM_CONTENEUR
+      );
 
       prenomActif =
         "";
@@ -1656,20 +1524,17 @@
         }
       );
 
-      effacerPrenomPersistantCampManager_();
-
       [
+        CLE_PRENOM_CONTENEUR,
         CLE_ASSISTANT_TERMINE,
         CLE_VIBRATIONS,
         CLE_SON,
         CLE_SOMBRE
       ].forEach(
         function(cle) {
-          try {
-            localStorage.removeItem(
-              cle
-            );
-          } catch (erreur) {}
+          localStorage.removeItem(
+            cle
+          );
         }
       );
 
