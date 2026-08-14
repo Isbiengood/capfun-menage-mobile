@@ -325,15 +325,6 @@
         >
           Changer de prénom
         </button>
-
-        <button
-          id="reinitialiserAutorisations"
-          class="bouton-danger"
-          type="button"
-          style="margin-top:10px;"
-        >
-          🔄 Réinitialiser cet appareil
-        </button>
       </div>
 
       <div class="option">
@@ -409,11 +400,21 @@
         </div>
       </div>
 
+      <div class="separateur"></div>
+
+      <button
+        id="reinitialiserAutorisations"
+        class="bouton-danger"
+        type="button"
+      >
+        🔄 Réinitialiser les autorisations
+      </button>
+
       <div class="option">
         <div class="titre-option">ℹ️ À propos</div>
         <div class="aide">
           <b>CampManager Mobile</b><br>
-          Version 3.2.10 — Mémoire prénom<br>
+          Version 3.2.10 — Prénom persistant V2.1.2<br>
           Serveur : Capfun Grand Cerf
         </div>
 
@@ -440,13 +441,6 @@
     const CLE_PRENOM_CONTENEUR =
       "campManagerPrenom";
 
-    /*
-     * Sauvegarde de secours du prénom côté GitHub.
-     * Le localStorage reste la source principale.
-     */
-    const COOKIE_PRENOM_CONTENEUR =
-      "campManagerPrenom";
-
     const CLE_ASSISTANT_TERMINE =
       "campManagerAssistantTermine";
 
@@ -462,131 +456,46 @@
     let oneSignalPret =
       false;
 
-    let prenomActif =
-      lirePrenomPersistantCampManager_();
+    /*
+     * ========================================================
+     * PRÉNOM PERSISTANT — MÉTHODE V2.1.2 ADAPTÉE
+     * ========================================================
+     *
+     * La V2.1.2 utilisait une URL personnelle ?prenom=...
+     * en plus du localStorage.
+     *
+     * Ici le paramètre est lu PAR LA PAGE GITHUB ELLE-MÊME,
+     * donc dans le contexte de premier niveau de l'iPhone.
+     * Cela évite de dépendre du postMessage de l'iframe Apps Script.
+     */
+    let prenomDepuisUrl =
+      "";
 
-    function lireCookiePrenomCampManager_() {
-      try {
-        const morceaux =
-          String(
-            document.cookie || ""
-          ).split(";");
-
-        for (
-          let i = 0;
-          i < morceaux.length;
-          i++
-        ) {
-          const morceau =
-            morceaux[i].trim();
-
-          const prefixe =
-            COOKIE_PRENOM_CONTENEUR +
-            "=";
-
-          if (
-            morceau.indexOf(
-              prefixe
-            ) === 0
-          ) {
-            return decodeURIComponent(
-              morceau.substring(
-                prefixe.length
-              )
-            );
-          }
-        }
-      } catch (erreur) {}
-
-      return "";
-    }
-
-
-    function lirePrenomPersistantCampManager_() {
-      let prenom =
-        "";
-
-      try {
-        prenom =
-          String(
-            localStorage.getItem(
-              CLE_PRENOM_CONTENEUR
-            ) ||
-            lireCookiePrenomCampManager_() ||
-            ""
-          ).trim();
-      } catch (erreur) {
-        prenom =
-          String(
-            lireCookiePrenomCampManager_() || ""
-          ).trim();
-      }
-
-      /*
-       * Si seul le cookie existe, on répare le localStorage.
-       */
-      if (
-        prenom
-      ) {
-        try {
-          localStorage.setItem(
-            CLE_PRENOM_CONTENEUR,
-            prenom
-          );
-        } catch (erreur) {}
-      }
-
-      return prenom;
-    }
-
-
-    function enregistrerPrenomPersistantCampManager_(
-      prenom
-    ) {
-      const valeur =
+    try {
+      prenomDepuisUrl =
         String(
-          prenom || ""
+          new URL(
+            window.location.href
+          ).searchParams.get(
+            "prenom"
+          ) || ""
         ).trim();
 
       if (
-        !valeur
+        prenomDepuisUrl
       ) {
-        return;
-      }
-
-      try {
         localStorage.setItem(
           CLE_PRENOM_CONTENEUR,
-          valeur
+          prenomDepuisUrl
         );
-      } catch (erreur) {}
+      }
+    } catch (erreur) {}
 
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CONTENEUR +
-          "=" +
-          encodeURIComponent(
-            valeur
-          ) +
-          "; Max-Age=31536000; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
-
-    function effacerPrenomPersistantCampManager_() {
-      try {
-        localStorage.removeItem(
-          CLE_PRENOM_CONTENEUR
-        );
-      } catch (erreur) {}
-
-      try {
-        document.cookie =
-          COOKIE_PRENOM_CONTENEUR +
-          "=; Max-Age=0; Path=/capfun-menage-mobile/; SameSite=Lax; Secure";
-      } catch (erreur) {}
-    }
-
+    let prenomActif =
+      prenomDepuisUrl ||
+      localStorage.getItem(
+        CLE_PRENOM_CONTENEUR
+      ) || "";
 
     function boolLocalStorage(
       cle,
@@ -830,17 +739,27 @@
       let src =
         url;
 
+      const urlConteneur =
+        window.location.origin +
+        window.location.pathname;
+
+      src +=
+        (
+          src.indexOf("?") ===
+            -1
+            ? "?"
+            : "&"
+        ) +
+        "conteneur=" +
+        encodeURIComponent(
+          urlConteneur
+        );
+
       if (
         prenomActif
       ) {
         src +=
-          (
-            url.indexOf("?") ===
-              -1
-              ? "?"
-              : "&"
-          ) +
-          "prenom=" +
+          "&prenom=" +
           encodeURIComponent(
             prenomActif
           );
@@ -1142,18 +1061,12 @@
 
       if (
         donnees.type ===
-          "campmanager-change-prenom"
+          "campmanager-reset-complet"
       ) {
         /*
-         * IMPORTANT :
-         * le bouton Changer de prénom visible dans l'iframe
-         * doit également effacer le prénom du conteneur GitHub.
+         * Reset complet demandé depuis le bouton visible Apps Script.
+         * On efface le contexte GitHub ET OneSignal.
          */
-        effacerPrenomPersistantCampManager_();
-
-        prenomActif =
-          "";
-
         window.OneSignalDeferred =
           window.OneSignalDeferred || [];
 
@@ -1162,26 +1075,18 @@
             OneSignal
           ) {
             try {
+              await OneSignal
+                .User
+                .PushSubscription
+                .optOut();
+
               await OneSignal.logout();
             } catch (erreur) {}
           }
         );
 
-        return;
-      }
-
-
-      if (
-        donnees.type ===
-          "campmanager-reset"
-      ) {
-        /*
-         * Réinitialisation demandée depuis les réglages de l'iframe.
-         * On efface aussi le stockage du conteneur GitHub.
-         */
-        effacerPrenomPersistantCampManager_();
-
         [
+          CLE_PRENOM_CONTENEUR,
           CLE_ASSISTANT_TERMINE,
           CLE_VIBRATIONS,
           CLE_SON,
@@ -1199,20 +1104,16 @@
         prenomActif =
           "";
 
-        preferences.vibrations =
-          true;
+        const urlSansPrenom =
+          window.location.origin +
+          window.location.pathname;
 
-        preferences.son =
-          false;
-
-        preferences.modeSombre =
-          false;
-
-        appliquerModeSombre();
+        window.location.replace(
+          urlSansPrenom
+        );
 
         return;
       }
-
 
       if (
         donnees.type ===
@@ -1224,7 +1125,8 @@
             donnees.prenom
           ).trim();
 
-        enregistrerPrenomPersistantCampManager_(
+        localStorage.setItem(
+          CLE_PRENOM_CONTENEUR,
           prenomActif
         );
 
@@ -1561,7 +1463,9 @@
     function changerPrenom() {
       fermerReglages();
 
-      effacerPrenomPersistantCampManager_();
+      localStorage.removeItem(
+        CLE_PRENOM_CONTENEUR
+      );
 
       prenomActif =
         "";
@@ -1620,9 +1524,8 @@
         }
       );
 
-      effacerPrenomPersistantCampManager_();
-
       [
+        CLE_PRENOM_CONTENEUR,
         CLE_ASSISTANT_TERMINE,
         CLE_VIBRATIONS,
         CLE_SON,
