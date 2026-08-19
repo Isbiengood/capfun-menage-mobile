@@ -7,7 +7,7 @@
  * - ne jamais mettre une clé secret/service_role dans GitHub.
  */
 window.CAMPMANAGER_V4_CONFIG = {
-  VERSION: "4.0.0-test.1",
+  VERSION: "4.0.0-test.2",
   SUPABASE_URL: "https://ebktlmglucuqyqywrtph.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_UzwlLr5gb8WpLmO2yIqsuQ_oHB8CX2E"
 };

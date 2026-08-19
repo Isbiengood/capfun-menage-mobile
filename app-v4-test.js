@@ -34,8 +34,8 @@
     appliquerModeSombreInitial();
     actualiserEtatReseau();
 
-    window.addEventListener("online", actualiserEtatReseau);
-    window.addEventListener("offline", actualiserEtatReseau);
+    window.addEventListener("online", gererRetourEnLigne);
+    window.addEventListener("offline", gererPerteConnexion);
 
     try {
       initialiserSupabase();
@@ -252,8 +252,11 @@
         const duree = Math.round(performance.now() - debut);
         afficherToast("Actualisé en " + duree + " ms");
       }
+
+      return true;
     } catch (erreur) {
       afficherErreur(erreur);
+      return false;
     } finally {
       etat.chargementEnCours = false;
       el.boutonActualiser.disabled = false;
@@ -374,6 +377,12 @@
       return;
     }
 
+    if (!navigator.onLine) {
+      masquerErreur();
+      afficherToast("🟠 Pas de connexion Internet · modification non enregistrée");
+      return;
+    }
+
     const texteInitial = bouton.textContent;
     bouton.disabled = true;
     bouton.textContent = "Enregistrement…";
@@ -404,7 +413,26 @@
 
       await chargerLogements(false);
     } catch (erreur) {
-      afficherErreur(erreur);
+      const message = messageErreur(erreur);
+
+      if (estErreurEtatDejaModifie(message)) {
+        masquerErreur();
+        afficherToast("✅ Déjà mis à jour sur un autre appareil");
+        await chargerLogements(false);
+        return;
+      }
+
+      if (estErreurReseau(erreur, message)) {
+        masquerErreur();
+        afficherToast("🟠 Connexion interrompue · vérification en cours…");
+
+        if (navigator.onLine) {
+          await chargerLogements(false);
+        }
+      } else {
+        afficherErreur(erreur);
+      }
+
       bouton.disabled = false;
       bouton.textContent = texteInitial;
       carte.classList.remove("en-cours");
@@ -516,6 +544,28 @@
       : "🟠 Hors connexion";
   }
 
+  function gererPerteConnexion() {
+    actualiserEtatReseau();
+    masquerErreur();
+    afficherToast("🟠 Hors connexion · aucune modification ne sera enregistrée");
+  }
+
+  async function gererRetourEnLigne() {
+    actualiserEtatReseau();
+    masquerErreur();
+    afficherToast("🟢 Connexion rétablie · synchronisation…");
+
+    if (!etat.client || !etat.prenom) {
+      return;
+    }
+
+    const ok = await chargerLogements(false);
+
+    if (ok) {
+      afficherToast("✅ Liste resynchronisée");
+    }
+  }
+
   function afficherTemps(debut, libelle) {
     const duree = Math.round(performance.now() - debut);
     el.badgeVitesse.textContent = duree + " ms";
@@ -524,7 +574,13 @@
 
   function afficherErreur(erreur) {
     const message = messageErreur(erreur);
-    el.erreurPrincipale.textContent = "❌ " + message;
+
+    if (estErreurReseau(erreur, message)) {
+      el.erreurPrincipale.textContent = "🟠 Connexion Internet indisponible · aucune modification enregistrée";
+    } else {
+      el.erreurPrincipale.textContent = "❌ " + message;
+    }
+
     el.erreurPrincipale.classList.remove("cache");
     console.error("CampManager V4 TEST", erreur);
   }
@@ -539,6 +595,25 @@
     if (typeof erreur === "string") return erreur;
     if (erreur.message) return erreur.message;
     return "Erreur de communication avec Supabase.";
+  }
+
+  function estErreurEtatDejaModifie(message) {
+    const texte = String(message || "").toLowerCase();
+    return texte.includes("etat déjà modifié") ||
+      texte.includes("état déjà modifié") ||
+      texte.includes("actualisez la liste");
+  }
+
+  function estErreurReseau(erreur, message) {
+    const texte = String(message || "").toLowerCase();
+    const nom = String((erreur && erreur.name) || "").toLowerCase();
+
+    return !navigator.onLine ||
+      nom === "typeerror" ||
+      texte.includes("load failed") ||
+      texte.includes("failed to fetch") ||
+      texte.includes("network") ||
+      texte.includes("fetch");
   }
 
   function afficherToast(message) {
