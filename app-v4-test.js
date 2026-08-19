@@ -21,7 +21,8 @@
     abonnement: null,
     minuteurRealtime: null,
     chargementEnCours: false,
-    toastTimer: null
+    toastTimer: null,
+    retourEnLigneTimer: null
   };
 
   const el = {};
@@ -35,7 +36,7 @@
     actualiserEtatReseau();
 
     window.addEventListener("online", gererRetourEnLigne);
-    window.addEventListener("offline", gererPerteConnexion);
+    window.addEventListener("offline", actualiserEtatReseau);
 
     try {
       initialiserSupabase();
@@ -223,14 +224,18 @@
     el.prenomReglages.textContent = etat.prenom || "—";
   }
 
-  async function chargerLogements(afficherMessage) {
+  async function chargerLogements(afficherMessage, options) {
+    options = options || {};
+
     if (!etat.client || !etat.prenom || etat.chargementEnCours) {
-      return;
+      return false;
     }
 
     etat.chargementEnCours = true;
     el.boutonActualiser.disabled = true;
-    masquerErreur();
+    if (!options.conserverErreur) {
+      masquerErreur();
+    }
 
     const debut = performance.now();
 
@@ -252,10 +257,11 @@
         const duree = Math.round(performance.now() - debut);
         afficherToast("Actualisé en " + duree + " ms");
       }
-
       return true;
     } catch (erreur) {
-      afficherErreur(erreur);
+      if (!options.silencieux) {
+        afficherErreur(erreur);
+      }
       return false;
     } finally {
       etat.chargementEnCours = false;
@@ -377,12 +383,6 @@
       return;
     }
 
-    if (!navigator.onLine) {
-      masquerErreur();
-      afficherToast("🟠 Pas de connexion Internet · modification non enregistrée");
-      return;
-    }
-
     const texteInitial = bouton.textContent;
     bouton.disabled = true;
     bouton.textContent = "Enregistrement…";
@@ -418,21 +418,11 @@
       if (estErreurEtatDejaModifie(message)) {
         masquerErreur();
         afficherToast("✅ Déjà mis à jour sur un autre appareil");
-        await chargerLogements(false);
+        await chargerLogements(false, { silencieux: true });
         return;
       }
 
-      if (estErreurReseau(erreur, message)) {
-        masquerErreur();
-        afficherToast("🟠 Connexion interrompue · vérification en cours…");
-
-        if (navigator.onLine) {
-          await chargerLogements(false);
-        }
-      } else {
-        afficherErreur(erreur);
-      }
-
+      afficherErreur(erreur);
       bouton.disabled = false;
       bouton.textContent = texteInitial;
       carte.classList.remove("en-cours");
@@ -544,26 +534,45 @@
       : "🟠 Hors connexion";
   }
 
-  function gererPerteConnexion() {
+  function gererRetourEnLigne() {
     actualiserEtatReseau();
-    masquerErreur();
-    afficherToast("🟠 Hors connexion · aucune modification ne sera enregistrée");
-  }
-
-  async function gererRetourEnLigne() {
-    actualiserEtatReseau();
-    masquerErreur();
-    afficherToast("🟢 Connexion rétablie · synchronisation…");
+    clearTimeout(etat.retourEnLigneTimer);
 
     if (!etat.client || !etat.prenom) {
       return;
     }
 
-    const ok = await chargerLogements(false);
+    masquerErreur();
+    afficherToast("🟢 Connexion rétablie · resynchronisation…");
 
-    if (ok) {
-      afficherToast("✅ Liste resynchronisée");
-    }
+    // Un très court délai laisse au réseau du téléphone le temps
+    // d'être réellement utilisable après l'événement 'online'.
+    etat.retourEnLigneTimer = setTimeout(async function () {
+      let ok = await chargerLogements(false, { silencieux: true });
+
+      if (!ok && navigator.onLine) {
+        await attendre(900);
+        ok = await chargerLogements(false, { silencieux: true });
+      }
+
+      if (!ok && navigator.onLine) {
+        await attendre(1800);
+        ok = await chargerLogements(false, { silencieux: true });
+      }
+
+      if (ok) {
+        masquerErreur();
+        afficherToast("✅ Liste resynchronisée");
+      } else if (navigator.onLine) {
+        afficherErreur(new Error("Connexion revenue, mais la resynchronisation a échoué. Touchez ↻ pour réessayer."));
+      }
+    }, 350);
+  }
+
+  function attendre(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
   }
 
   function afficherTemps(debut, libelle) {
@@ -574,13 +583,7 @@
 
   function afficherErreur(erreur) {
     const message = messageErreur(erreur);
-
-    if (estErreurReseau(erreur, message)) {
-      el.erreurPrincipale.textContent = "🟠 Connexion Internet indisponible · aucune modification enregistrée";
-    } else {
-      el.erreurPrincipale.textContent = "❌ " + message;
-    }
-
+    el.erreurPrincipale.textContent = "❌ " + message;
     el.erreurPrincipale.classList.remove("cache");
     console.error("CampManager V4 TEST", erreur);
   }
@@ -592,28 +595,29 @@
 
   function messageErreur(erreur) {
     if (!erreur) return "Erreur inconnue.";
-    if (typeof erreur === "string") return erreur;
-    if (erreur.message) return erreur.message;
-    return "Erreur de communication avec Supabase.";
+
+    let message = "";
+    if (typeof erreur === "string") {
+      message = erreur;
+    } else if (erreur.message) {
+      message = erreur.message;
+    } else {
+      message = "Erreur de communication avec Supabase.";
+    }
+
+    if (!navigator.onLine || /load failed|failed to fetch|networkerror|network request failed/i.test(message)) {
+      return "Pas de connexion Internet — modification non enregistrée.";
+    }
+
+    if (estErreurEtatDejaModifie(message)) {
+      return "Déjà mis à jour sur un autre appareil.";
+    }
+
+    return message;
   }
 
   function estErreurEtatDejaModifie(message) {
-    const texte = String(message || "").toLowerCase();
-    return texte.includes("etat déjà modifié") ||
-      texte.includes("état déjà modifié") ||
-      texte.includes("actualisez la liste");
-  }
-
-  function estErreurReseau(erreur, message) {
-    const texte = String(message || "").toLowerCase();
-    const nom = String((erreur && erreur.name) || "").toLowerCase();
-
-    return !navigator.onLine ||
-      nom === "typeerror" ||
-      texte.includes("load failed") ||
-      texte.includes("failed to fetch") ||
-      texte.includes("network") ||
-      texte.includes("fetch");
+    return /[ée]tat d[ée]j[àa] modifi[ée]|etat deja modifie|actualisez la liste/i.test(String(message || ""));
   }
 
   function afficherToast(message) {
