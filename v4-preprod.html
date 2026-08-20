@@ -430,11 +430,19 @@
     <div class="modal">
       <h1>🔐 CampManager V4</h1>
       <p>
-        Entrez votre prénom et votre code PIN V4.
-        Une session sécurisée sera créée pour 12 heures.
+        Au premier accès, indiquez votre prénom et votre code PIN.
+        Ensuite, ce téléphone mémorisera uniquement votre prénom.
       </p>
 
       <div id="erreurConnexion" class="erreur cache"></div>
+
+      <div id="zonePrenomMemorise" class="option cache">
+        <b id="textePrenomMemorise">Bonjour</b>
+        <div class="etat-technique">Votre prénom est reconnu sur cet appareil.</div>
+        <button id="changerPrenomConnexion" class="bouton-secondaire" type="button">
+          Changer de prénom
+        </button>
+      </div>
 
       <input
         id="champPrenom"
@@ -451,7 +459,7 @@
         type="password"
         inputmode="numeric"
         autocomplete="current-password"
-        placeholder="Code PIN"
+        placeholder="Votre code PIN"
         maxlength="8"
       >
 
@@ -497,7 +505,7 @@
   <div id="toast" class="toast cache"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2/dist/umd/supabase.min.js"></script>
-  <script src="./config-v4-preprod.js?v=401"></script>
-  <script src="./app-v4-preprod.js?v=401"></script>
+  <script src="./config-v4-preprod.js?v=402"></script>
+  <script src="./app-v4-preprod.js?v=402"></script>
 </body>
 </html>

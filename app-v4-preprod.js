@@ -35,6 +35,9 @@
     voileConnexion: $("voileConnexion"),
     voileReglages: $("voileReglages"),
     champPrenom: $("champPrenom"),
+    zonePrenomMemorise: $("zonePrenomMemorise"),
+    textePrenomMemorise: $("textePrenomMemorise"),
+    changerPrenomConnexion: $("changerPrenomConnexion"),
     champPin: $("champPin"),
     boutonConnexion: $("boutonConnexion"),
     erreurConnexion: $("erreurConnexion"),
@@ -51,6 +54,11 @@
   let token =
     localStorage.getItem(
       CFG.STORAGE_TOKEN
+    ) || "";
+
+  let prenomMemorise =
+    localStorage.getItem(
+      CFG.STORAGE_PRENOM
     ) || "";
 
   let utilisateur = null;
@@ -168,10 +176,68 @@
     }
   }
 
+  function appliquerPrenomMemoriseConnexion() {
+    const aUnPrenom =
+      !!prenomMemorise;
+
+    el.zonePrenomMemorise.classList.toggle(
+      "cache",
+      !aUnPrenom
+    );
+
+    el.champPrenom.classList.toggle(
+      "cache",
+      aUnPrenom
+    );
+
+    if (aUnPrenom) {
+      el.textePrenomMemorise.textContent =
+        "Bonjour " +
+        prenomMemorise;
+
+      el.champPrenom.value =
+        prenomMemorise;
+    } else {
+      el.textePrenomMemorise.textContent =
+        "";
+
+      el.champPrenom.value =
+        "";
+    }
+  }
+
   function ouvrirConnexion() {
+    appliquerPrenomMemoriseConnexion();
+
     el.voileConnexion.classList.remove(
       "cache"
     );
+
+    setTimeout(() => {
+      if (prenomMemorise) {
+        el.champPin.focus();
+      } else {
+        el.champPrenom.focus();
+      }
+    }, 50);
+  }
+
+  function changerPrenomMemorise() {
+    prenomMemorise =
+      "";
+
+    localStorage.removeItem(
+      CFG.STORAGE_PRENOM
+    );
+
+    el.champPin.value =
+      "";
+
+    afficherErreurConnexion(
+      ""
+    );
+
+    appliquerPrenomMemoriseConnexion();
 
     setTimeout(() => {
       el.champPrenom.focus();
@@ -224,7 +290,10 @@
     }
 
     const prenom =
-      el.champPrenom.value.trim();
+      (
+        prenomMemorise ||
+        el.champPrenom.value
+      ).trim();
 
     const pin =
       el.champPin.value.trim();
@@ -304,6 +373,17 @@
         CFG.STORAGE_TOKEN,
         token
       );
+
+      prenomMemorise =
+        data.prenom;
+
+      localStorage.setItem(
+        CFG.STORAGE_PRENOM,
+        prenomMemorise
+      );
+
+      el.champPrenom.value =
+        prenomMemorise;
 
       el.champPin.value =
         "";
@@ -605,6 +685,14 @@
           !!data.gouvernante
       };
 
+      prenomMemorise =
+        data.prenom;
+
+      localStorage.setItem(
+        CFG.STORAGE_PRENOM,
+        prenomMemorise
+      );
+
       el.nomUtilisateur.textContent =
         "Utilisateur : " +
         data.prenom;
@@ -885,6 +973,11 @@
   el.boutonConnexion.addEventListener(
     "click",
     connexion
+  );
+
+  el.changerPrenomConnexion.addEventListener(
+    "click",
+    changerPrenomMemorise
   );
 
   el.champPin.addEventListener(
