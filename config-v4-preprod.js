@@ -3,7 +3,7 @@
  * Ne jamais mettre service_role / sb_secret_ dans GitHub.
  */
 window.CAMPMANAGER_V4_PREPROD = Object.freeze({
-  VERSION: "4.0.0-preprod.2",
+  VERSION: "4.0.0-preprod.3-cache403",
   SUPABASE_URL: "https://ebktlmglucuqyqywrtph.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_UzwlLr5gb8WpLmO2yIqsuQ_oHB8CX2E",
   REFRESH_MS: 3000,
