@@ -1,13 +1,293 @@
-/* CampManager V4 — configuration navigateur
+/* CampManager V4 — configuration navigateur MULTI-CAMPING
+ * Version 4.1.0 — 28/08/2026
+ *
+ * Principe :
+ * - un seul site GitHub Pages pour tous les campings ;
+ * - le camping est choisi par l'URL :
+ *     ?camping=grand-cerf
+ * - sans paramètre, le Grand Cerf reste le camping par défaut ;
+ * - les sessions/prénoms/thèmes sont séparés par camping ;
+ * - les anciens appels V4 sont automatiquement redirigés vers
+ *   les nouveaux RPC Multi-Camping.
+ *
+ * SÉCURITÉ :
  * La clé ci-dessous est une clé PUBLISHABLE prévue pour le navigateur.
  * Ne jamais mettre service_role / sb_secret_ dans GitHub.
  */
-window.CAMPMANAGER_V4 = Object.freeze({
-  VERSION: "4.0.0-production.3",
-  SUPABASE_URL: "https://ebktlmglucuqyqywrtph.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_UzwlLr5gb8WpLmO2yIqsuQ_oHB8CX2E",
-  REFRESH_MS: 3000,
-  STORAGE_TOKEN: "campmanager_v4_session",
-  STORAGE_PRENOM: "campmanager_v4_prenom",
-  STORAGE_THEME: "campmanager_v4_theme"
-});
+
+(() => {
+  "use strict";
+
+  const CAMPING_PAR_DEFAUT =
+    "grand-cerf";
+
+  const CLE_CAMPING_MEMORISE =
+    "campmanager_v4_camping";
+
+  function normaliserCodeCamping_(
+    valeur
+  ) {
+    const code =
+      String(
+        valeur || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (
+      /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(
+        code
+      )
+    ) {
+      return code;
+    }
+
+    return "";
+  }
+
+
+  function lireCampingDepuisUrl_() {
+    try {
+      const params =
+        new URLSearchParams(
+          window.location.search || ""
+        );
+
+      return normaliserCodeCamping_(
+        params.get(
+          "camping"
+        )
+      );
+    } catch (
+      erreur
+    ) {
+      return "";
+    }
+  }
+
+
+  const campingUrl =
+    lireCampingDepuisUrl_();
+
+  const campingMemorise =
+    normaliserCodeCamping_(
+      localStorage.getItem(
+        CLE_CAMPING_MEMORISE
+      )
+    );
+
+  const CAMPING_CODE =
+    campingUrl ||
+    campingMemorise ||
+    CAMPING_PAR_DEFAUT;
+
+  localStorage.setItem(
+    CLE_CAMPING_MEMORISE,
+    CAMPING_CODE
+  );
+
+
+  /*
+   * Chaque camping possède maintenant ses propres clés locales.
+   * Ainsi un téléphone utilisé dans deux établissements ne mélange
+   * jamais les sessions ou le prénom mémorisé.
+   */
+  const suffixe =
+    "_" +
+    CAMPING_CODE.replace(
+      /[^a-z0-9]+/g,
+      "_"
+    );
+
+
+  window.CAMPMANAGER_V4 =
+    Object.freeze({
+      VERSION:
+        "4.1.0-multicamping",
+
+      CAMPING_CODE:
+        CAMPING_CODE,
+
+      SUPABASE_URL:
+        "https://ebktlmglucuqyqywrtph.supabase.co",
+
+      SUPABASE_PUBLISHABLE_KEY:
+        "sb_publishable_UzwlLr5gb8WpLmO2yIqsuQ_oHB8CX2E",
+
+      REFRESH_MS:
+        3000,
+
+      STORAGE_TOKEN:
+        "campmanager_v4_session" +
+        suffixe,
+
+      STORAGE_PRENOM:
+        "campmanager_v4_prenom" +
+        suffixe,
+
+      STORAGE_THEME:
+        "campmanager_v4_theme" +
+        suffixe
+    });
+
+
+  /*
+   * ============================================================
+   * ADAPTATEUR COMPATIBILITÉ V4 -> MULTI-CAMPING
+   * ============================================================
+   *
+   * app-v4.js et pin-v4.js peuvent rester inchangés.
+   *
+   * Ils appellent encore les anciens noms :
+   * - connexion_preprod_v4
+   * - charger_logements_preprod_v4
+   * - avancer_etat_menage_preprod_v4
+   * - deconnexion_preprod_v4
+   * - creer_pin_avec_activation_v4
+   *
+   * Ce petit adaptateur les traduit automatiquement vers :
+   * - connexion_multicamping_v4
+   * - charger_logements_multicamping_v4
+   * - avancer_etat_menage_multicamping_v4
+   * - deconnexion_multicamping_v4
+   * - creer_pin_avec_activation_multicamping_v4
+   */
+
+
+  if (
+    window.supabase &&
+    typeof window.supabase.createClient ===
+      "function"
+  ) {
+    const createClientOriginal =
+      window.supabase.createClient.bind(
+        window.supabase
+      );
+
+    window.supabase.createClient =
+      function(
+        supabaseUrl,
+        supabaseKey,
+        options
+      ) {
+        const client =
+          createClientOriginal(
+            supabaseUrl,
+            supabaseKey,
+            options
+          );
+
+        const rpcOriginal =
+          client.rpc.bind(
+            client
+          );
+
+        client.rpc =
+          function(
+            nomRpc,
+            parametres,
+            optionsRpc
+          ) {
+            const params =
+              Object.assign(
+                {},
+                parametres || {}
+              );
+
+            let rpc =
+              String(
+                nomRpc || ""
+              );
+
+            switch (
+              rpc
+            ) {
+              case "connexion_preprod_v4":
+                rpc =
+                  "connexion_multicamping_v4";
+
+                params.p_camping_code =
+                  CAMPING_CODE;
+                break;
+
+
+              case "charger_logements_preprod_v4":
+                rpc =
+                  "charger_logements_multicamping_v4";
+                break;
+
+
+              case "avancer_etat_menage_preprod_v4":
+                rpc =
+                  "avancer_etat_menage_multicamping_v4";
+                break;
+
+
+              case "deconnexion_preprod_v4":
+                rpc =
+                  "deconnexion_multicamping_v4";
+                break;
+
+
+              case "creer_pin_avec_activation_v4":
+                rpc =
+                  "creer_pin_avec_activation_multicamping_v4";
+
+                params.p_camping_code =
+                  CAMPING_CODE;
+                break;
+
+              default:
+                break;
+            }
+
+            return rpcOriginal(
+              rpc,
+              params,
+              optionsRpc
+            );
+          };
+
+        return client;
+      };
+  }
+
+
+  /*
+   * Affichage discret du camping actif dans le bandeau.
+   * On attend que le DOM soit disponible.
+   */
+  function afficherCampingActif_() {
+    const sousTitre =
+      document.querySelector(
+        ".sous-titre"
+      );
+
+    if (
+      sousTitre
+    ) {
+      sousTitre.textContent =
+        "V4 · " +
+        CAMPING_CODE +
+        " · accès sécurisé";
+    }
+  }
+
+
+  if (
+    document.readyState ===
+      "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      afficherCampingActif_,
+      {
+        once:
+          true
+      }
+    );
+  } else {
+    afficherCampingActif_();
+  }
+
+})();
