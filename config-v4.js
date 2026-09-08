@@ -1,11 +1,12 @@
 /* CampManager V4 — configuration navigateur MULTI-CAMPING
- * Version 4.1.0 — 28/08/2026
+ * Version 4.2.0 — 08/09/2026
  *
  * Principe :
  * - un seul site GitHub Pages pour tous les campings ;
  * - le camping est choisi par l'URL :
- *     ?camping=grand-cerf
- * - sans paramètre, le Grand Cerf reste le camping par défaut ;
+ *     ?camping=camping-du-lac
+ * - aucun établissement n'est codé en dur ;
+ * - sans paramètre, le dernier établissement mémorisé est utilisé ;
  * - les sessions/prénoms/thèmes sont séparés par camping ;
  * - les anciens appels V4 sont automatiquement redirigés vers
  *   les nouveaux RPC Multi-Camping.
@@ -18,8 +19,6 @@
 (() => {
   "use strict";
 
-  const CAMPING_PAR_DEFAUT =
-    "grand-cerf";
 
   const CLE_CAMPING_MEMORISE =
     "campmanager_v4_camping";
@@ -79,12 +78,18 @@
   const CAMPING_CODE =
     campingUrl ||
     campingMemorise ||
-    CAMPING_PAR_DEFAUT;
+    "";
 
-  localStorage.setItem(
-    CLE_CAMPING_MEMORISE,
-    CAMPING_CODE
-  );
+  /*
+   * L'URL fournie par le Google Sheet est prioritaire.
+   * Elle devient alors le dernier établissement mémorisé.
+   */
+  if (CAMPING_CODE) {
+    localStorage.setItem(
+      CLE_CAMPING_MEMORISE,
+      CAMPING_CODE
+    );
+  }
 
 
   /*
@@ -94,7 +99,10 @@
    */
   const suffixe =
     "_" +
-    CAMPING_CODE.replace(
+    (
+      CAMPING_CODE ||
+      "sans_etablissement"
+    ).replace(
       /[^a-z0-9]+/g,
       "_"
     );
@@ -103,10 +111,13 @@
   window.CAMPMANAGER_V4 =
     Object.freeze({
       VERSION:
-        "4.1.0-multicamping",
+        "4.2.0-multietablissement",
 
       CAMPING_CODE:
         CAMPING_CODE,
+
+      CONFIGURATION_VALIDE:
+        CAMPING_CODE !== "",
 
       SUPABASE_URL:
         "https://ebktlmglucuqyqywrtph.supabase.co",
@@ -199,6 +210,23 @@
                 nomRpc || ""
               );
 
+            if (
+              !CAMPING_CODE &&
+              (
+                rpc === "connexion_preprod_v4" ||
+                rpc === "creer_pin_avec_activation_v4"
+              )
+            ) {
+              return Promise.resolve({
+                data:
+                  null,
+                error: {
+                  message:
+                    "Lien CampManager incomplet : aucun établissement n’est indiqué."
+                }
+              });
+            }
+
             switch (
               rpc
             ) {
@@ -267,9 +295,26 @@
       sousTitre
     ) {
       sousTitre.textContent =
-        "V4 · " +
-        CAMPING_CODE +
-        " · accès sécurisé";
+        CAMPING_CODE
+          ? "V4 · " +
+            CAMPING_CODE +
+            " · accès sécurisé"
+          : "V4 · établissement non configuré";
+    }
+
+    if (!CAMPING_CODE) {
+      const erreur =
+        document.getElementById(
+          "erreurPrincipale"
+        );
+
+      if (erreur) {
+        erreur.textContent =
+          "Lien CampManager incomplet. Ouvrez l’application avec le lien ou le QR code fourni par votre établissement.";
+        erreur.classList.remove(
+          "cache"
+        );
+      }
     }
   }
 
