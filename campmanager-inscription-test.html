@@ -137,7 +137,7 @@
             <h3>Créer votre copie</h3>
             <div class="instruction">
               <div class="num">1</div>
-              <div><strong>Cliquez sur « Créer ma copie CampManager »</strong> pour ouvrir le MASTER.</div>
+              <div><strong>Cliquez sur « Copier le code et créer ma copie »</strong>. Le code sera placé automatiquement dans votre presse-papiers avant l’ouverture du MASTER.</div>
             </div>
             <div class="instruction">
               <div class="num">2</div>
@@ -145,10 +145,10 @@
             </div>
             <div class="instruction">
               <div class="num">3</div>
-              <div>Dans cette copie, lancez l’installation CampManager et saisissez votre nom d’établissement puis le code affiché ci-dessus.</div>
+              <div>Dans cette copie, lancez l’installation CampManager, saisissez votre nom d’établissement puis <strong>collez le code</strong> (Ctrl+V sur Windows, ou Coller sur mobile).</div>
             </div>
 
-            <button id="copyMaster" class="primary" type="button">Créer ma copie CampManager</button>
+            <button id="copyMaster" class="primary" type="button">Copier le code et créer ma copie</button>
             <button id="restart" class="secondary" type="button">Créer un code pour un autre établissement</button>
 
             <div class="note">Un compte Google est nécessaire pour enregistrer la copie du fichier.</div>
@@ -249,6 +249,9 @@ copyCode.addEventListener("click",async()=>{
 });
 
 copyMaster.addEventListener("click",()=>{
+  if(currentCode && navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(currentCode).catch(()=>{});
+  }
   window.open(MASTER_COPY_URL,"_blank","noopener,noreferrer");
 });
 
