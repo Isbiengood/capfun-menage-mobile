@@ -137,18 +137,18 @@
             <h3>Créer votre copie</h3>
             <div class="instruction">
               <div class="num">1</div>
-              <div><strong>Cliquez sur « Copier le code et créer ma copie »</strong>. Le code sera placé automatiquement dans votre presse-papiers avant l’ouverture du MASTER.</div>
+              <div><strong>Cliquez une première fois sur le bouton bleu</strong> pour copier le code. Le bouton confirmera « Code copié ✓ » avant de vous proposer d’ouvrir le MASTER.</div>
             </div>
             <div class="instruction">
               <div class="num">2</div>
-              <div>Google vous proposera de créer votre propre copie dans votre Drive.</div>
+              <div><strong>Cliquez une deuxième fois</strong> sur le bouton devenu « Ouvrir le MASTER et créer ma copie ».</div>
             </div>
             <div class="instruction">
               <div class="num">3</div>
-              <div>Dans cette copie, lancez l’installation CampManager, saisissez votre nom d’établissement puis <strong>collez le code</strong> (Ctrl+V sur Windows, ou Coller sur mobile).</div>
+              <div>Dans la copie, choisissez <strong>⚙️ Établissement / installation → 🚀 Installer un nouvel établissement</strong>, saisissez le nom puis <strong>collez le code</strong> avec Ctrl+V.</div>
             </div>
 
-            <button id="copyMaster" class="primary" type="button">Copier le code et créer ma copie</button>
+            <button id="copyMaster" class="primary" type="button">Copier le code avant de créer ma copie</button>
             <button id="restart" class="secondary" type="button">Créer un code pour un autre établissement</button>
 
             <div class="note">Un compte Google est nécessaire pour enregistrer la copie du fichier.</div>
@@ -177,6 +177,7 @@ const copyCode=document.getElementById("copyCode");
 const copyMaster=document.getElementById("copyMaster");
 const restart=document.getElementById("restart");
 let currentCode="";
+let codeCopiedForMaster=false;
 
 function setStatus(msg,type="info"){
   statusBox.textContent=msg||"";
@@ -223,6 +224,8 @@ form.addEventListener("submit",async(e)=>{
     }
 
     currentCode=String(data.codeInstallation||"");
+    codeCopiedForMaster=false;
+    copyMaster.textContent="Copier le code avant de créer ma copie";
     if(!currentCode)throw new Error("Le serveur n’a pas renvoyé de code.");
 
     codeBox.textContent=currentCode;
@@ -248,15 +251,35 @@ copyCode.addEventListener("click",async()=>{
   }
 });
 
-copyMaster.addEventListener("click",()=>{
-  if(currentCode && navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(currentCode).catch(()=>{});
+copyMaster.addEventListener("click",async()=>{
+  if(!currentCode){
+    setStatus("Aucun code d’activation n’est disponible.","error");
+    return;
   }
+
+  if(!codeCopiedForMaster){
+    try{
+      if(!navigator.clipboard || !navigator.clipboard.writeText){
+        throw new Error("Presse-papiers non disponible");
+      }
+      await navigator.clipboard.writeText(currentCode);
+      codeCopiedForMaster=true;
+      copyMaster.textContent="Code copié ✓ — Ouvrir le MASTER et créer ma copie";
+      setStatus("Code copié avec succès. Cliquez maintenant une deuxième fois sur le bouton bleu pour ouvrir le MASTER.","info");
+      return;
+    }catch(_){
+      setStatus("La copie automatique du code a échoué. Utilisez d’abord le bouton « Copier » situé juste à côté du code, puis cliquez à nouveau ici.","error");
+      return;
+    }
+  }
+
   window.open(MASTER_COPY_URL,"_blank","noopener,noreferrer");
 });
 
 restart.addEventListener("click",()=>{
   currentCode="";
+  codeCopiedForMaster=false;
+  copyMaster.textContent="Copier le code avant de créer ma copie";
   codeBox.textContent="—";
   expiry.textContent="";
   success.classList.remove("show");
